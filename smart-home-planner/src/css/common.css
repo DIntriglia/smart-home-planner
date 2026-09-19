@@ -4030,3 +4030,31 @@ select.is-open {
 }
 
 .status-decommissioned { color: #aaa; background: rgba(128, 128, 128, 0.15); }
+
+.device-source-summary {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.device-source-line {
+    color: var(--text-secondary);
+    overflow-wrap: anywhere;
+}
+
+.device-source-label {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-right: 0.5rem;
+}
+
+.device-ha-details {
+    margin-top: 0.75rem;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.device-ha-details summary { cursor: pointer; }
+.device-ha-details p { margin-top: 0.75rem; overflow-wrap: anywhere; }

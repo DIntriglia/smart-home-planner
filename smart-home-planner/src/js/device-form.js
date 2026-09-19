@@ -2516,13 +2516,10 @@ async function loadDuplicateDeviceFromStorage() {
 }
 
 function loadDeviceData(device) {
-    renderHaAvailabilityDetails(device);
+    renderHaAvailabilityDetails(editingDeviceId ? device : {});
     document.getElementById("device-retired-date").value = device.retiredDate || "";
     document.getElementById("device-retired-reason").value = device.retiredReason || "";
     renderDeviceCustomFields(settings, device.customFields);
-    const sourceDescription = document.getElementById("device-source-description");
-    if (sourceDescription) sourceDescription.textContent = editingDeviceId
-        ? [getDeviceSourceLabel(device), getDeviceHaDisabledLabel(device)].filter(Boolean).join(" · ") : "Manual";
     if (device && device.id) {
         activeDeviceId = String(device.id);
     }

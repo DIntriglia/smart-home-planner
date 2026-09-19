@@ -62,6 +62,18 @@
                 <form id="device-form">
                     <div class="form-warnings is-hidden" id="device-warnings" role="status" aria-live="polite"></div>
 
+                    <section class="device-source-summary" aria-label="Device source and Home Assistant status">
+                        <div class="form-warnings" id="device-ha-warning" role="status" hidden>
+                            <div class="form-warnings-title" id="device-ha-warning-title"></div>
+                            <p id="device-ha-warning-message"></p>
+                        </div>
+                        <p class="device-source-line"><span class="device-source-label">Source</span> <span id="device-source-description">Manual</span></p>
+                        <details class="device-ha-details" id="device-ha-details" hidden>
+                            <summary>Home Assistant availability details</summary>
+                            <div id="ha-availability-details"></div>
+                        </details>
+                    </section>
+
                     <!-- Basic Information -->
                     <div class="form-section">
                         <h3 class="form-section-title">Basic Information</h3>
@@ -648,11 +660,6 @@
                         <div class="device-ports-empty" id="device-ports-empty">No data ports added yet.</div>
                     </div>
 
-                    <div class="form-section">
-                        <h3 class="form-section-title">Device source</h3>
-                        <p id="device-source-description">Manual</p>
-                        <details><summary>Home Assistant availability details</summary><div id="ha-availability-details"></div></details>
-                    </div>
                     <!-- Integrations -->
                     <div class="form-section">
                         <h3 class="form-section-title">Integrations</h3>

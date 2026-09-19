@@ -2771,12 +2771,30 @@ function renderHaAvailabilityDetails(device) {
     const target = document.getElementById("ha-availability-details");
     if (!target) return;
     const info = getDeviceAvailability(device);
+    const isHaSource = hasHomeAssistantSource(device);
+    const source = document.getElementById("device-source-description");
+    if (source) source.textContent = getDeviceSourceLabel(device);
+    const details = document.getElementById("device-ha-details");
+    if (details) details.hidden = !isHaSource;
+    const warning = document.getElementById("device-ha-warning");
+    const disabled = matchesHaDisabledState(device, "any-disabled");
+    if (warning) {
+        warning.hidden = !disabled;
+        document.getElementById("device-ha-warning-title").textContent = device.haDisabledState === "mixed"
+            ? "Some linked devices are disabled in Home Assistant" : "Disabled in Home Assistant";
+        document.getElementById("device-ha-warning-message").textContent =
+            "Review this device in Home Assistant using View on HA above. Its planner status is managed separately.";
+    }
     target.replaceChildren();
     const heading = document.createElement("p");
     heading.textContent = hasHomeAssistantSource(device) ? getDeviceAvailabilityLabel(device) : "No Home Assistant device linked.";
     target.append(heading);
     const counts = document.createElement("p");
-    counts.textContent = `${info.unavailable} unavailable · ${info.unknown} unknown. Disabled entities and action-only entities are excluded. Unknown may mean missing or stale HA data.`;
+    counts.textContent = disabled && !info.total
+        ? "No enabled entity data is available for this disabled device. Disabled entities are excluded from availability checks."
+        : !info.total
+            ? "No current entity data is available. Home Assistant may be disconnected, the data may be stale, or this device may have no eligible entities."
+            : `${info.unavailable} unavailable · ${info.unknown} unknown. Disabled entities and action-only entities are excluded.`;
     target.append(counts);
     for (const entity of info.affected) {
         const row = document.createElement("p");
