@@ -45,6 +45,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         settings = await loadSettings();
         renderHaIntegrationSettings();
+        await initializeHaIntegrations();
         renderNotificationSettings();
         await renderExcludedDevicesManagement();
         await renderNetworksManagement();
@@ -631,13 +632,13 @@ async function renderExcludedDevicesManagement() {
             .filter(([id]) => Boolean(id))
     );
 
-    const filteredExcludedIds = excludedIds.filter((deviceId) => haById.has(deviceId));
-    if (filteredExcludedIds.length !== excludedIds.length) {
-        await patchStorage({
-            excluded_devices: filteredExcludedIds
-        });
-    }
-    excludedIds = filteredExcludedIds;
+    const stored = await loadStorage();
+    const integrationIds = new Set(Array.isArray(stored.integration_excluded_devices) ? stored.integration_excluded_devices : []);
+    const domains = HaSyncModel.normalizeDomains(stored.settings?.haExcludedIntegrations);
+    haDevices.forEach(device => {
+        if (HaSyncModel.isIntegrationExcluded(device, domains)) integrationIds.add(device.id);
+    });
+    excludedIds = [...new Set([...excludedIds, ...integrationIds])];
 
     excludedDevicesRows = excludedIds.map((deviceId) => {
         const haDevice = haById.get(deviceId);
@@ -649,6 +650,9 @@ async function renderExcludedDevicesManagement() {
             name,
             manufacturer,
             model,
+            integrationExcluded: integrationIds.has(deviceId),
+            integrationReason: integrationIds.has(deviceId)
+                ? `Re-enable integration: ${(haDevice?.integrationDomains || []).join(", ") || "membership unavailable"}` : "",
             haAvailable: Boolean(haDevice),
             haUrl: haDevice ? buildHaDeviceDetailsUrl(deviceId) : ''
         };
@@ -722,11 +726,11 @@ function renderExcludedDevicesTable() {
         const openAction = row.haAvailable && row.haUrl
             ? `<a class="btn btn-secondary btn-sm" href="${escapeHtml(row.haUrl)}" target="_blank" rel="noopener noreferrer">Open in HA</a>`
             : '<button class="btn btn-secondary btn-sm" type="button" disabled>Open in HA</button>';
-        const restoreDisabled = row.haAvailable ? '' : ' disabled';
+        const restoreDisabled = row.haAvailable && !row.integrationExcluded ? '' : ' disabled';
 
         return `
             <tr${missingClass}>
-                <td><strong>${escapedName}</strong></td>
+                <td><strong>${escapedName}</strong>${row.integrationReason ? `<span class="ha-integration-reason">${escapeHtml(row.integrationReason)}</span>` : ''}</td>
                 <td>${escapedManufacturer}</td>
                 <td>${escapedModel}</td>
                 <td class="actions-cell">
@@ -829,6 +833,10 @@ async function restoreExcludedDevice(deviceId) {
 
     try {
         const storage = await loadStorage();
+        if ((storage.integration_excluded_devices || []).includes(normalizedId)) {
+            showMessage("Re-enable this device's integration before restoring it.", "error");
+            return;
+        }
         const excludedIds = getExcludedDeviceIds(storage);
         if (!excludedIds.includes(normalizedId)) {
             await renderExcludedDevicesManagement();

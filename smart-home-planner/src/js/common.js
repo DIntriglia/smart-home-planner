@@ -263,6 +263,7 @@ function buildDefaultStorage() {
         networks: [],
         isps: [],
         excluded_devices: [],
+        integration_excluded_devices: [],
         settings: null,
         mapPositions: null,
         mapImagePositions: null,
@@ -285,6 +286,8 @@ function mergeStorage(raw) {
         excluded_devices: excludedDevices
             .map((value) => String(value || '').trim())
             .filter(Boolean),
+        integration_excluded_devices: (Array.isArray(source.integration_excluded_devices)
+            ? source.integration_excluded_devices : []).map(value => String(value || '').trim()).filter(Boolean),
         settings: source.settings || base.settings,
         mapPositions: source.mapPositions || base.mapPositions,
         mapImagePositions: source.mapImagePositions || base.mapImagePositions,

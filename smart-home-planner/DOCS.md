@@ -306,3 +306,12 @@ These are the most common workflows for day-to-day use:
 5. Keep a single source of truth by attaching manuals and notes to devices.
 
 The Smart Home Planner app is meant to stay out of your way while keeping your smart home fully documented. Use it as a living inventory and a planning tool that grows with your setup.
+
+
+### Integration imports
+
+In **Settings → Home Assistant Integration → Integrations**, search for an integration domain and uncheck it to exclude its devices. All integrations, including newly discovered ones, start checked. Multiple instances of the same integration share one setting. Select all and Deselect all affect the entire list, including integrations hidden by search.
+
+A device is removed only when all its integrations are unchecked. Linked inventory records stay while any associated Home Assistant device remains eligible. Removal uses the normal inventory deletion behavior: notes, attachments, and device/ISP connections are removed. A confirmation shows the number of existing records affected. Home Assistant itself is unchanged.
+
+Rechecking allows fresh imports immediately. It does not recover deleted metadata or undo independent manual/automatic exclusions. Integration-excluded devices appear in Excluded Devices with instructions to re-enable their integration. Unknown membership does not cause new removals, and saved exclusions survive unavailable integrations.

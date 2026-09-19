@@ -1,6 +1,7 @@
 ## 1.9.0 - 2026-08-24
 
 ### Added
+- Searchable integration import controls in Home Assistant settings, with bulk selection, device cleanup, and automatic reimport when re-enabled
 - Automatic snapshots of your data, taken as you work and before anything that can remove data
 - New "Restore a Snapshot" section in Settings > Backup to roll back without a full Home Assistant backup
 - The app version is now shown in the footer, next to the app name

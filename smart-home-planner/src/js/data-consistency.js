@@ -425,8 +425,8 @@ function detectAllInconsistencies(devices, options = {}) {
 
 // Some pages reach these through the global object; expose them like common.js
 // does for its shared helpers.
-window.countReferencesToDevice = countReferencesToDevice;
-window.clearReferencesToDevice = clearReferencesToDevice;
-window.validateDeviceForSave = validateDeviceForSave;
-window.detectDeviceInconsistencies = detectDeviceInconsistencies;
-window.detectAllInconsistencies = detectAllInconsistencies;
+globalThis.countReferencesToDevice = countReferencesToDevice;
+globalThis.clearReferencesToDevice = clearReferencesToDevice;
+globalThis.validateDeviceForSave = validateDeviceForSave;
+globalThis.detectDeviceInconsistencies = detectDeviceInconsistencies;
+globalThis.detectAllInconsistencies = detectAllInconsistencies;

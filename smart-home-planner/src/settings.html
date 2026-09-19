@@ -334,6 +334,19 @@
                                 </div>
                             </div>
 
+                            <section class="settings-section" id="ha-integrations-section">
+                                <h3 class="settings-section-title">Integrations</h3>
+                                <p class="settings-description">Choose which Home Assistant integrations can import devices. Unchecking removes devices only when all their integrations are unchecked. Rechecking imports fresh records; deleted notes and attachments are not restored.</p>
+                                <div class="ha-integrations-toolbar">
+                                    <input type="search" id="ha-integrations-search" placeholder="Search integrations" aria-label="Search integrations">
+                                    <button type="button" class="btn btn-secondary btn-sm" id="ha-integrations-select">Select all</button>
+                                    <button type="button" class="btn btn-secondary btn-sm" id="ha-integrations-deselect">Deselect all</button>
+                                    <button type="button" class="btn btn-secondary btn-sm" id="ha-integrations-retry">Refresh</button>
+                                </div>
+                                <p id="ha-integrations-status" role="status" aria-live="polite">Loading integrations…</p>
+                                <div id="ha-integrations-list" class="ha-integrations-list"></div>
+                            </section>
+
                             <div class="settings-section">
                                 <h3 class="settings-section-title">Excluded Devices</h3>
                                 <p class="settings-description">Devices removed from the app while still existing in Home Assistant. Restore them to add them back to the app.</p>
@@ -743,6 +756,9 @@
 
     <script src="js/metadata.js"></script>
     <script src="js/common.js"></script>
+    <script src="js/data-consistency.js"></script>
+    <script src="js/ha-sync-model.js"></script>
+    <script src="js/ha-integrations.js"></script>
     <script src="js/settings.js"></script>
     <!-- PDF export — jsPDF + autoTable plugin loaded from CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>

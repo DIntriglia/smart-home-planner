@@ -25,6 +25,7 @@ DEVICE_FILES_DIR = os.path.join(DATA_DIR, "device-files")
 AREAS_FILE = os.path.join(DATA_DIR, "areas.json")
 FLOORS_FILE = os.path.join(DATA_DIR, "floors.json")
 DEVICES_FILE = os.path.join(DATA_DIR, "devices.json")
+INTEGRATIONS_FILE = os.path.join(DATA_DIR, "integrations.json")
 LABELS_FILE = os.path.join(DATA_DIR, "labels.json")
 BACKUPS_DEBUG_FILE = os.path.join(DATA_DIR, "backups.json")
 SNAPSHOTS_DIR = os.path.join(DATA_DIR, "snapshots")
@@ -1563,6 +1564,21 @@ class AppHandler(SimpleHTTPRequestHandler):
             with _lock:
                 payload = _read_registry(FLOORS_FILE)
             self._send_json(200, payload)
+            return
+
+        if path == "/api/ha/integrations":
+            try:
+                with _lock:
+                    with open(INTEGRATIONS_FILE, "r", encoding="utf-8") as handle:
+                        entries = json.load(handle)
+                if not isinstance(entries, list):
+                    raise ValueError("Invalid integration metadata")
+            except (OSError, ValueError):
+                self._send_json(503, {"error": "Integration metadata is unavailable. Retry after Home Assistant connects."})
+                return
+            domains = sorted({entry["domain"] for entry in entries
+                              if isinstance(entry, dict) and isinstance(entry.get("domain"), str)})
+            self._send_json(200, [{"domain": domain} for domain in domains])
             return
 
         if path == "/api/ha/devices":

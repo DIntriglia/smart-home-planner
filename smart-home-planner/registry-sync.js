@@ -4,6 +4,10 @@ import process from "node:process";
 import WebSocket from "ws";
 import { createConnection } from "home-assistant-js-websocket";
 
+import "./src/js/data-consistency.js";
+import "./src/js/ha-sync-model.js";
+const { buildStorageDevicesUpdate, enrichDevices, cleanupRemovedFiles } = globalThis.HaSyncModel;
+const normalizeString = value => String(value ?? "").trim();
 globalThis.WebSocket = WebSocket;
 
 const SUPERVISOR_WS_URL = "ws://supervisor/core/websocket";
@@ -46,46 +50,10 @@ const registries = [
   },
 ];
 
-const registryQueue = new Map(registries.map((registry) => [registry.name, Promise.resolve()]));
-const AUTO_EXCLUDED_DEVICE_MANUFACTURERS = new Set([
-  "officialaddons",
-  "homeassistant",
-  "homeassistantcommunityapps",
-  "localaddons",
-  "tailscaleinc",
-  "proxmoxve",
-  "hacsxyz",
-  "ping",
-  "uptimekuma",
-  "systemmonitor",
-  "googlecastgroup",
-  "googledrive",
-  "musicassistant",
-  "Zigbee2mqtt"
-].map((value) => normalizeManufacturerKey(value)).filter(Boolean));
-const AUTO_EXCLUDED_DEVICE_NAMES = new Set([
-  "sun",
-  "Google Translate es com"
-].map((value) => normalizeString(value).toLowerCase()).filter(Boolean));
-const AUTO_EXCLUDED_DEVICE_MODELS = new Set([
-  "plugin",
-  "integration",
-  "alarmo",
-  "forecast",
-  "homeassistantapp",
-  "jukeboxcontroller",
-  "watchman",
-  "googlecastgroup",
-  "googledrive",
-  "cloud",
-].map((value) => normalizeModelKey(value)).filter(Boolean));
-const AUTO_EXCLUDED_DEVICE_IDENTIFIER_NAMESPACES = new Set([
-  "music_assistant",
-  "google_weather"
-].map((value) => normalizeString(value).toLowerCase()).filter(Boolean));
+// Serializing registry work keeps cached membership and device reconciliation ordered.
+const registryQueue = new Map();
 const REGISTRY_FIELDS_TO_OMIT = {
   devices: new Set([
-    "config_entries",
     "config_entries_subentries",
     "created_at",
     "hw_version",
@@ -191,10 +159,10 @@ async function readStorage() {
 
 // Returns false when the storage changed under us, so the caller can rebuild
 // the update from fresh data instead of overwriting someone else's write.
-async function writeStorage(payload, etag) {
+async function writeStorage(payload, etag, allowEmpty = false) {
   const response = await fetch(STORAGE_API_URL, {
     method: "PUT",
-    headers: { "Content-Type": "application/json", "If-Match": etag },
+    headers: { "Content-Type": "application/json", "If-Match": etag, ...(allowEmpty ? { "X-SHP-Allow-Empty": "1" } : {}) },
     body: JSON.stringify(payload),
   });
   if (response.status === 409) {
@@ -210,43 +178,6 @@ async function writeStorage(payload, etag) {
     throw new Error(`Storage write failed: HTTP ${response.status}`);
   }
   return true;
-}
-
-function normalizeString(value) {
-  if (value === undefined || value === null) return "";
-  return String(value).trim();
-}
-
-function normalizeHaDeviceIds(values) {
-  const result = [];
-  const seen = new Set();
-  const source = Array.isArray(values) ? values : values ? [values] : [];
-  for (const value of source) {
-    const normalized = normalizeString(value);
-    if (!normalized || seen.has(normalized)) continue;
-    seen.add(normalized);
-    result.push(normalized);
-  }
-  return result;
-}
-
-function getLinkedHaDeviceIds(device) {
-  if (!device || typeof device !== "object") {
-    return [];
-  }
-  const direct = normalizeHaDeviceIds(device.haDeviceIds || device.homeAssistantDeviceIds);
-  if (direct.length) {
-    return direct;
-  }
-  const hasFlag = Boolean(
-    device.homeAssistant === true ||
-      ["true", "1", "yes"].includes(normalizeString(device.homeAssistant).toLowerCase())
-  );
-  if (hasFlag) {
-    const fallbackId = normalizeString(device.id);
-    return fallbackId ? [fallbackId] : [];
-  }
-  return [];
 }
 
 async function readLabelsRegistry() {
@@ -267,436 +198,6 @@ async function readLabelsRegistry() {
     log(`Failed to read labels registry: ${error?.message || error}`);
     return new Set();
   }
-}
-
-function normalizeManufacturerKey(value) {
-  return normalizeString(value).toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
-function normalizeModelKey(value) {
-  return normalizeString(value).toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
-// Mirrors normalizeOptionValue() in src/js/common.js — the slug the UI uses to
-// match a device value against its configured option list. Keep both in sync.
-function normalizeOptionSlug(value) {
-  const normalized = normalizeString(value)
-    .toLowerCase()
-    .replace(/\s*&\s*/g, "-")
-    .replace(/\//g, "-")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-  return normalized === "wi-fi" ? "wifi" : normalized;
-}
-
-// Mirrors the frontend fallback for values that were stored as their own slug:
-// "intel" is shown as "Intel". Anything already written as a label is kept.
-function formatOptionLabel(value) {
-  const label = normalizeString(value);
-  if (!label || label !== normalizeOptionSlug(label)) return label;
-  return label
-    .split("-")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
-
-// Home Assistant reports the manufacturer as registered by the integration, so
-// it arrives decorated with trademark symbols and legal forms ("Aqara™",
-// "Google Inc.", "Shenzhen Neo Electronics Co., Ltd."). Devices are tagged with
-// the trimmed name instead, which is what a user would type by hand.
-const BRAND_SYMBOL_PATTERN = /[™®©℠]/g;
-const BRAND_LEGAL_SUFFIXES = new Set([
-  "inc", "incorporated", "corp", "corporation", "co", "company",
-  "ltd", "ltda", "limited", "llc", "llp", "plc",
-  "gmbh", "mbh", "ag", "kg", "kgaa", "ug",
-  "sa", "sas", "sarl", "sl", "srl", "spa",
-  "ab", "aps", "as", "bv", "nv", "oy", "oyj",
-  "kk", "pte", "pty",
-]);
-const BRAND_MAX_SUFFIX_PASSES = 4;
-// Applied to the cleaned name, so "Google Inc." needs no entry here.
-const BRAND_ALIASES = new Map([
-  ["googlenest", "Google"],
-  ["raspberrypitrading", "Raspberry Pi"],
-]);
-
-function stripBrandLegalSuffixes(value) {
-  let result = value;
-  // "Co., Ltd." peels one suffix per pass.
-  for (let pass = 0; pass < BRAND_MAX_SUFFIX_PASSES; pass += 1) {
-    const match = result.match(/^(.+?)[\s,]+([^\s,]+)$/);
-    if (!match) break;
-    const head = match[1].replace(/[\s,]+$/, "");
-    const tail = match[2].toLowerCase().replace(/[./]/g, "");
-    if (!head || !BRAND_LEGAL_SUFFIXES.has(tail)) break;
-    result = head;
-  }
-  return result;
-}
-
-function cleanBrandName(value) {
-  const collapsed = normalizeString(value)
-    .replace(BRAND_SYMBOL_PATTERN, "")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (!collapsed) return "";
-  const stripped = stripBrandLegalSuffixes(collapsed).replace(/[\s,]+$/, "").trim();
-  // A manufacturer named after its legal form alone keeps its original name.
-  return stripped || collapsed;
-}
-
-function normalizeBrand(value) {
-  const cleaned = cleanBrandName(value);
-  if (!cleaned) return "";
-  return BRAND_ALIASES.get(normalizeManufacturerKey(cleaned)) || cleaned;
-}
-
-// A brand assigned by the sync must also exist in the device option list, or it
-// never shows up in Settings > Device Options and cannot be renamed or reused —
-// an orphan brand nobody created by hand.
-//
-// The default brands live in the frontend (src/js/metadata.js) and are not
-// readable from here, so one that happens to be a default is still added as a
-// custom; normalizeCustomOptionValues() in common.js drops the duplicate on the
-// next settings load. Hidden defaults are un-hidden instead, otherwise the
-// option would stay invisible while a device points at it.
-function createBrandOptionRegistry(settings) {
-  const source = settings && typeof settings === "object" ? settings : {};
-  const storedCustoms = Array.isArray(source.customOptions?.brands)
-    ? source.customOptions.brands
-    : null;
-  // Pre-1.8.0 storage keeps one flat list per group. Writing customOptions here
-  // would make the frontend migration skip it and drop the user's own brands,
-  // so the legacy list is extended in place until the frontend migrates it.
-  const legacyList = storedCustoms === null && Array.isArray(source.brands) ? source.brands : null;
-  const values = [...(storedCustoms || legacyList || [])];
-  const hiddenSlugs = Array.isArray(source.hiddenDefaults?.brands)
-    ? [...source.hiddenDefaults.brands]
-    : [];
-  const bySlug = new Map();
-  const byKey = new Map();
-  let addedCount = 0;
-  let unhiddenCount = 0;
-
-  const index = (label) => {
-    const slug = normalizeOptionSlug(label);
-    if (slug && !bySlug.has(slug)) bySlug.set(slug, label);
-    const key = normalizeManufacturerKey(label);
-    if (key && !byKey.has(key)) byKey.set(key, label);
-  };
-  values.forEach(index);
-
-  const unhide = (slug) => {
-    const position = hiddenSlugs.findIndex((hidden) => normalizeOptionSlug(hidden) === slug);
-    if (position < 0) return;
-    hiddenSlugs.splice(position, 1);
-    unhiddenCount += 1;
-  };
-
-  const add = (label) => {
-    values.push(label);
-    index(label);
-    addedCount += 1;
-  };
-
-  return {
-    // For devices created by the sync: reuses the configured label when the
-    // brand is already known ("TPLink" -> "TP-Link"), registers it otherwise.
-    resolve(brand) {
-      const label = normalizeString(brand);
-      const slug = normalizeOptionSlug(label);
-      if (!slug) return "";
-      unhide(slug);
-      const known = bySlug.get(slug) || byKey.get(normalizeManufacturerKey(label));
-      if (known) return known;
-      add(label);
-      return label;
-    },
-    // For devices the user already owns: their brand is never rewritten, it is
-    // only registered as an option when it is missing from the list.
-    register(brand) {
-      const label = normalizeString(brand);
-      const slug = normalizeOptionSlug(label);
-      if (!slug) return "";
-      unhide(slug);
-      if (!bySlug.has(slug)) add(formatOptionLabel(label));
-      return label;
-    },
-    getAddedCount() {
-      return addedCount;
-    },
-    // Returns the settings to persist, or null when nothing changed.
-    buildNextSettings() {
-      if (!addedCount && !unhiddenCount) return null;
-      const next = { ...source };
-      if (legacyList !== null) {
-        next.brands = values;
-      } else {
-        next.customOptions = { ...(next.customOptions || {}), brands: values };
-      }
-      if (unhiddenCount) {
-        next.hiddenDefaults = { ...(next.hiddenDefaults || {}), brands: hiddenSlugs };
-      }
-      return next;
-    },
-  };
-}
-
-function shouldAutoExcludeOnCreate(haDevice) {
-  const disabledBy = normalizeString(haDevice?.disabled_by).toLowerCase();
-  if (disabledBy === "user" || disabledBy === "config_entry") {
-    return true;
-  }
-  const identifiers = Array.isArray(haDevice?.identifiers) ? haDevice.identifiers : [];
-  const hasExcludedIdentifierNamespace = identifiers.some(
-    (entry) =>
-      Array.isArray(entry) &&
-      AUTO_EXCLUDED_DEVICE_IDENTIFIER_NAMESPACES.has(normalizeString(entry[0]).toLowerCase())
-  );
-  if (hasExcludedIdentifierNamespace) {
-    return true;
-  }
-  const manufacturerKey = normalizeManufacturerKey(haDevice?.manufacturer);
-  if (AUTO_EXCLUDED_DEVICE_MANUFACTURERS.has(manufacturerKey)) {
-    return true;
-  }
-  const modelKey = normalizeModelKey(haDevice?.model);
-  if (AUTO_EXCLUDED_DEVICE_MODELS.has(modelKey)) {
-    return true;
-  }
-  const rawName = normalizeString(haDevice?.name_by_user) || normalizeString(haDevice?.name);
-  const nameKey = rawName.toLowerCase();
-  return AUTO_EXCLUDED_DEVICE_NAMES.has(nameKey);
-}
-
-function pickDeviceName(device) {
-  return (
-    normalizeString(device?.name_by_user) ||
-    normalizeString(device?.name) ||
-    normalizeString(device?.id)
-  );
-}
-
-function getHaAreaSyncTarget(settings) {
-  if (settings && settings.haAreaSyncTarget === "installed") {
-    return "installed";
-  }
-  return "controlled";
-}
-
-function getExcludedDeviceIds(storage) {
-  const source = Array.isArray(storage?.excluded_devices)
-    ? storage.excluded_devices
-    : Array.isArray(storage?.excludedDevices)
-      ? storage.excludedDevices
-      : [];
-  return new Set(source.map((value) => normalizeString(value)).filter(Boolean));
-}
-
-function buildSyncedDevice(haDevice, existingDevice, haAreaSyncTarget, allowedLabels, brandRegistry) {
-  const id = normalizeString(haDevice?.id);
-  const areaId = normalizeString(haDevice?.area_id);
-  const manufacturer = normalizeBrand(haDevice?.manufacturer);
-  const model = normalizeString(haDevice?.model);
-  let haLabels = Array.isArray(haDevice?.labels)
-    ? haDevice.labels.map((label) => normalizeString(label)).filter(Boolean)
-    : Array.isArray(haDevice?.label_ids)
-      ? haDevice.label_ids.map((label) => normalizeString(label)).filter(Boolean)
-      : null;
-  if (haLabels && allowedLabels instanceof Set) {
-    haLabels = haLabels.filter((label) => allowedLabels.has(label));
-  }
-  const hasExistingDevice = Boolean(existingDevice && typeof existingDevice === "object");
-  const base = hasExistingDevice ? { ...existingDevice } : {};
-  const existingId = normalizeString(existingDevice?.id);
-  const deviceId = existingId || id;
-  const linkedHaIds = hasExistingDevice ? getLinkedHaDeviceIds(existingDevice) : [];
-  if (id && !linkedHaIds.includes(id)) {
-    linkedHaIds.push(id);
-  }
-
-  const synced = {
-    ...base,
-    id: deviceId,
-    name: pickDeviceName(haDevice) || normalizeString(base.name) || id,
-    brand: hasExistingDevice ? brandRegistry.register(base.brand) : brandRegistry.resolve(manufacturer),
-    model: hasExistingDevice ? normalizeString(base.model) : model,
-    homeAssistant: linkedHaIds.length > 0,
-    haDeviceIds: linkedHaIds,
-  };
-  if (haLabels !== null) {
-    synced.labels = haLabels;
-  } else if (!Array.isArray(synced.labels)) {
-    synced.labels = [];
-  }
-
-  if (!hasExistingDevice) {
-    synced.status = "working";
-    synced.area = areaId;
-    synced.controlledArea = areaId;
-  } else if (haAreaSyncTarget === "controlled") {
-    synced.controlledArea = areaId;
-  } else {
-    synced.area = areaId;
-  }
-
-  delete synced.createdAt;
-  return synced;
-}
-
-function buildStorageDevicesUpdate(storage, haDevices, allowedLabels) {
-  const haAreaSyncTarget = getHaAreaSyncTarget(storage.settings);
-  const brandRegistry = createBrandOptionRegistry(storage.settings);
-  const excludedDeviceIds = getExcludedDeviceIds(storage);
-  const existingDevices = Array.isArray(storage.devices) ? storage.devices : [];
-  const existingById = new Map(
-    existingDevices
-      .filter((device) => device && typeof device === "object")
-      .map((device) => [normalizeString(device.id), device])
-      .filter(([id]) => Boolean(id))
-  );
-  const existingByHaId = new Map();
-  existingDevices.forEach((device) => {
-    if (!device || typeof device !== "object") return;
-    const linkedIds = getLinkedHaDeviceIds(device);
-    linkedIds.forEach((haId) => {
-      if (!haId || existingByHaId.has(haId)) return;
-      existingByHaId.set(haId, device);
-    });
-  });
-
-  const sourceDevices = (haDevices || []).filter((device) => device && typeof device === "object");
-  const sourceDevicesAfterExclusions = [];
-  const autoExcludedOnCreateIds = new Set();
-  let excludedDevicesCount = 0;
-
-  for (const sourceDevice of sourceDevices) {
-    const id = normalizeString(sourceDevice?.id);
-    if (!id) continue;
-
-    // Existing devices are never auto-excluded by sync rules.
-    if (existingById.has(id)) {
-      sourceDevicesAfterExclusions.push(sourceDevice);
-      continue;
-    }
-
-    if (excludedDeviceIds.has(id)) {
-      excludedDevicesCount += 1;
-      continue;
-    }
-
-    if (shouldAutoExcludeOnCreate(sourceDevice)) {
-      autoExcludedOnCreateIds.add(id);
-      excludedDevicesCount += 1;
-      continue;
-    }
-
-    sourceDevicesAfterExclusions.push(sourceDevice);
-  }
-
-  const sourceById = new Map(
-    sourceDevicesAfterExclusions
-      .map((device) => [normalizeString(device?.id), device])
-      .filter(([id, device]) => Boolean(id) && Boolean(device))
-  );
-
-  const syncedIds = new Set();
-  const nextDevices = [];
-  let unlinkedDevicesCount = 0;
-  let createdDevicesCount = 0;
-
-  for (const existingDevice of existingDevices) {
-    if (!existingDevice || typeof existingDevice !== "object") {
-      continue;
-    }
-    const id = normalizeString(existingDevice.id);
-    if (!id) {
-      nextDevices.push(existingDevice);
-      continue;
-    }
-
-    const linkedHaIds = getLinkedHaDeviceIds(existingDevice);
-    const directSource = sourceById.get(id);
-    let sourceDevice = directSource || null;
-    if (!sourceDevice && linkedHaIds.length > 0) {
-      for (const haId of linkedHaIds) {
-        const candidate = sourceById.get(haId);
-        if (candidate) {
-          sourceDevice = candidate;
-          break;
-        }
-      }
-    }
-
-    if (sourceDevice) {
-      nextDevices.push(
-        buildSyncedDevice(sourceDevice, existingDevice, haAreaSyncTarget, allowedLabels, brandRegistry)
-      );
-      if (directSource) {
-        syncedIds.add(id);
-      }
-      linkedHaIds.forEach((haId) => {
-        if (sourceById.has(haId)) {
-          syncedIds.add(haId);
-        }
-      });
-      syncedIds.add(normalizeString(sourceDevice.id));
-      continue;
-    }
-
-    const wasLinkedToHa = Boolean(existingDevice.homeAssistant);
-    const retainedDevice = {
-      ...existingDevice,
-      homeAssistant: false,
-      haDeviceIds: [],
-    };
-    nextDevices.push(retainedDevice);
-    if (wasLinkedToHa) {
-      unlinkedDevicesCount += 1;
-    }
-  }
-
-  for (const sourceDevice of sourceDevicesAfterExclusions) {
-    const id = normalizeString(sourceDevice?.id);
-    if (!id || syncedIds.has(id)) continue;
-    const existingDevice = existingById.get(id) || existingByHaId.get(id);
-    nextDevices.push(
-      buildSyncedDevice(sourceDevice, existingDevice, haAreaSyncTarget, allowedLabels, brandRegistry)
-    );
-    createdDevicesCount += 1;
-  }
-
-  const nextExcludedDevices = [...excludedDeviceIds];
-  for (const id of autoExcludedOnCreateIds) {
-    if (excludedDeviceIds.has(id)) continue;
-    excludedDeviceIds.add(id);
-    nextExcludedDevices.push(id);
-  }
-
-  const nextStorage = {
-    ...storage,
-    devices: nextDevices,
-    excluded_devices: nextExcludedDevices,
-  };
-
-  const nextSettings = brandRegistry.buildNextSettings();
-  if (nextSettings) {
-    nextStorage.settings = nextSettings;
-  }
-
-  return {
-    nextStorage,
-    stats: {
-      deviceCount: nextDevices.length,
-      haAreaSyncTarget,
-      excludedDevicesCount,
-      autoExcludedCount: autoExcludedOnCreateIds.size,
-      unlinkedDevicesCount,
-      createdDevicesCount,
-      addedBrandCount: brandRegistry.getAddedCount(),
-    },
-  };
 }
 
 function logDeviceSyncSummary(stats) {
@@ -726,8 +227,10 @@ async function syncStorageDevicesFromRegistry(haDevices) {
 
   for (let attempt = 1; attempt <= STORAGE_WRITE_ATTEMPTS; attempt += 1) {
     const { storage, etag } = await readStorage();
-    const { nextStorage, stats } = buildStorageDevicesUpdate(storage, haDevices, allowedLabels);
-    if (await writeStorage(nextStorage, etag)) {
+    const { nextStorage, stats, removedDevices } = buildStorageDevicesUpdate(storage, haDevices, allowedLabels);
+    if (await writeStorage(nextStorage, etag, removedDevices.length > 0)) {
+      const failures = await cleanupRemovedFiles(removedDevices, nextStorage.devices, `${SERVER_BASE_URL}/api/device-files`);
+      if (failures.length) log(`Integration exclusions saved, but ${failures.length} attachment(s) could not be deleted.`);
       logDeviceSyncSummary(stats);
       return;
     }
@@ -748,7 +251,20 @@ async function fetchRegistry(conn, registry) {
 }
 
 async function syncRegistry(conn, registry, reason = "manual") {
-  const data = await fetchRegistry(conn, registry);
+  let data = await fetchRegistry(conn, registry);
+  if (registry.name === "devices") {
+    let entries = null;
+    try {
+      const response = await conn.sendMessagePromise({ type: "config_entries/get" });
+      if (!Array.isArray(response)) throw new Error("Invalid config entries response");
+      entries = response.filter(entry => entry && typeof entry.entry_id === "string" && typeof entry.domain === "string")
+        .map(entry => ({ entry_id: entry.entry_id, domain: entry.domain }));
+      await saveToData("integrations.json", entries);
+    } catch (error) {
+      log(`Integration membership unavailable: ${error?.message || error}. No new integration removals will be made.`);
+    }
+    data = enrichDevices(data, entries);
+  }
   const sanitizedData = sanitizeRegistryDataForFile(registry.name, data);
   await saveToData(registry.file, sanitizedData);
   if (registry.name === "devices") {
@@ -775,23 +291,25 @@ async function syncRegistry(conn, registry, reason = "manual") {
 }
 
 function enqueueRegistrySync(conn, registry, reason) {
-  const previous = registryQueue.get(registry.name) || Promise.resolve();
+  const previous = registryQueue.get("all") || Promise.resolve();
   const next = previous
     .catch(() => undefined)
     .then(() => retry(() => syncRegistry(conn, registry, reason), `Sync ${registry.name}`));
-  registryQueue.set(registry.name, next);
+  registryQueue.set("all", next);
   return next;
 }
 
 async function syncAll(conn, reason = "startup") {
-  await Promise.all(
-    registries.map((registry) =>
-      retry(() => syncRegistry(conn, registry, reason), `Initial sync ${registry.name}`)
-    )
-  );
+  for (const registry of registries) {
+    await enqueueRegistrySync(conn, registry, reason);
+  }
 }
 
 async function subscribeToUpdates(conn) {
+  const devicesRegistry = registries.find(registry => registry.name === "devices");
+  await conn.subscribeMessage(() => {
+    enqueueRegistrySync(conn, devicesRegistry, "config entries changed").catch(error => log(error.message));
+  }, { type: "config_entries/subscribe" });
   for (const registry of registries) {
     await retry(
       async () => {
@@ -810,7 +328,7 @@ async function subscribeToUpdates(conn) {
           if (eventType === "label_registry_updated") {
             log("Label Registry updated -> re-syncing");
           }
-          enqueueRegistrySync(conn, registry, `event ${eventType}`);
+          enqueueRegistrySync(conn, registry, `event ${eventType}`).catch(error => log(error.message));
         }, registry.event);
       },
       `Subscription ${registry.event}`
@@ -846,7 +364,7 @@ async function connectAndRun() {
   conn.addEventListener("ready", () => {
     log("WebSocket connection ready. Re-syncing registries...");
     for (const registry of registries) {
-      enqueueRegistrySync(conn, registry, "ready");
+      enqueueRegistrySync(conn, registry, "ready").catch(error => log(error.message));
     }
   });
 

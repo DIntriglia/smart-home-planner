@@ -6,7 +6,8 @@
   "description": "Home Assistant registry sync worker for areas/floors",
   "main": "registry-sync.js",
   "scripts": {
-    "start:sync": "node /app/registry-sync.js"
+    "start:sync": "node /app/registry-sync.js",
+    "test": "node --test tests/*.test.js"
   },
   "dependencies": {
     "home-assistant-js-websocket": "9.5.0",
