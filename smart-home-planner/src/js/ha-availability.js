@@ -70,7 +70,9 @@
         const allUnavailable = info.unavailable === info.total;
         const status = allUnavailable ? "All monitored entities unavailable"
             : info.unavailable ? "Some entities unavailable" : info.unknown ? "Some entity states unknown" : "Available";
-        let text = `${status} · ${info.available} available · ${info.unavailable} unavailable · ${info.unknown} unknown`;
+        const counts = [[info.available, "available"], [info.unavailable, "unavailable"], [info.unknown, "unknown"]]
+            .filter(([count]) => count > 0).map(([count, label]) => `${count} ${label}`);
+        let text = [status, ...counts].join(" · ");
         const times = info.affected.map(entity => entity.unavailableSince);
         if (times.length && times.every(time => Number.isFinite(time) && time <= now)) {
             // An all-entity outage starts when the last entity becomes unavailable.

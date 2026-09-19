@@ -651,6 +651,14 @@
         }
 
         #ha-diagnostics { margin-bottom: 1.5rem; }
+        #ha-diagnostics .ha-diagnostic-group { border: 1px solid var(--border-color); border-radius: 8px; margin-top: 0.75rem; }
+        #ha-diagnostics .ha-diagnostic-group > summary { display: flex; align-items: center; gap: 0.75rem; padding: 1rem; cursor: pointer; list-style: none; }
+        #ha-diagnostics .ha-diagnostic-group > summary::-webkit-details-marker { display: none; }
+        #ha-diagnostics .ha-diagnostic-group > summary::after { content: ""; width: 0.5rem; height: 0.5rem; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); margin-left: auto; flex-shrink: 0; }
+        #ha-diagnostics .ha-diagnostic-group[open] > summary::after { transform: rotate(225deg); }
+        #ha-diagnostics .ha-diagnostic-group > summary:focus-visible { outline: 2px solid var(--primary-text); outline-offset: 2px; }
+        #ha-diagnostics .ha-diagnostic-count { font-size: 1.75rem; font-weight: 700; }
+        #ha-diagnostics .ha-diagnostic-content { padding: 0 1rem 1rem; }
         #ha-diagnostics .btn { white-space: normal; text-align: left; max-width: 100%; }
         #ha-diagnostics ul { padding-left: 1.2rem; margin: 0.75rem 0 1.25rem; }
         #ha-diagnostics > p { color: var(--text-secondary); margin: 0.75rem 0; line-height: 1.5; }
@@ -1621,6 +1629,7 @@
             });
         }
 
+        const haDiagnosticOpen = new Map();
         function renderHaDiagnostics(devices) {
             const target = document.getElementById("ha-diagnostics");
             target.hidden = !devices.some(hasHomeAssistantSource);
@@ -1633,7 +1642,7 @@
             heading.textContent = "Home Assistant diagnostics";
             target.append(heading);
             const summary = document.createElement("p");
-            summary.textContent = `Working in planner: ${attention.length} need attention · ${disabled.length} disabled in HA · ${unknown.length} availability unknown. Refreshes every 30 seconds; unavailable alerts respect the configured grace period. Entity issues do not change planner status or necessarily mean the whole device has failed.`;
+            summary.textContent = "Review devices marked Working in the planner. Expand a category for details. Refreshes every 30 seconds; outage alerts respect the configured grace period.";
             target.append(summary);
             for (const [title, items, query] of [
                 ["Needs attention", attention, "availability=attention"],
@@ -1641,13 +1650,32 @@
                 ["Availability unknown", unknown, "availability=unknown"]
             ]) {
                 if (!items.length) continue;
+                const group = document.createElement("details");
+                group.className = "ha-diagnostic-group";
+                group.open = haDiagnosticOpen.get(query) || false;
+                group.addEventListener("toggle", () => {
+                    if (group.isConnected) haDiagnosticOpen.set(query, group.open);
+                });
+                const category = document.createElement("summary");
+                const count = document.createElement("span");
+                count.className = "ha-diagnostic-count";
+                count.textContent = items.length;
+                const label = document.createElement("span");
+                label.textContent = title;
+                category.append(count, label);
+                group.append(category);
+                const content = document.createElement("div");
+                content.className = "ha-diagnostic-content";
+                group.append(content);
+                target.append(group);
                 const link = document.createElement("a");
                 link.className = "btn btn-secondary";
                 link.href = buildAppUrl(`devices.html?status=working&${query}`);
-                link.textContent = `${title} (${items.length}) — review / bulk edit`;
-                target.append(link);
+                link.textContent = "Review / bulk edit";
+                link.setAttribute("aria-label", `Review or bulk edit ${title.toLowerCase()} devices`);
+                content.append(link);
                 const list = document.createElement("ul");
-                for (const device of items.slice(0, 8)) {
+                for (const device of items) {
                     const row = document.createElement("li");
                     const detail = document.createElement("a");
                     detail.href = buildAppUrl(`device-edit.html?id=${encodeURIComponent(device.id)}`);
@@ -1665,13 +1693,7 @@
                     }
                     list.append(row);
                 }
-                target.append(list);
-                if (items.length > 8) {
-                    const more = document.createElement("a");
-                    more.href = link.href;
-                    more.textContent = `Showing 8 of ${items.length} — View all`;
-                    target.append(more);
-                }
+                content.append(list);
             }
         }
 

@@ -175,6 +175,7 @@ test("audit distinguishes entity issues and calculates the duration of the actua
     const info = {total:2,available:0,unavailable:2,unknown:0,state:"unavailable",
         affected:[{unavailableSince:now-3*86400000},{unavailableSince:now-3600000}]};
     assert.match(format(info,now), /All monitored entities unavailable/);
+    assert.doesNotMatch(format(info,now), /0 available|0 unknown/);
     assert.match(format(info,now), /All unavailable for 1 hour/);
     assert.match(format({...info,total:3,available:1},now), /Some entities unavailable.*Longest entity outage: 3 days/);
     assert.match(format({...info,total:3,unavailable:0,available:2,unknown:1,affected:[]},now), /Some entity states unknown.*2 available.*1 unknown/);

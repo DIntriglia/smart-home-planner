@@ -4,6 +4,7 @@
 - Dashboard diagnostics identify integrations and unknown entities, distinguish all-entity outages from partial issues, show outage duration, and link explicitly to all results when previews are truncated.
 
 ### Fixed
+- Use consistent collapsible audit category cards with counts and chevrons, show all matching devices when expanded, preserve expansion during refresh, and omit zero counts from summaries.
 - Devices with all entities disabled (such as Zigbee coordinators) now show Not monitored instead of an availability audit issue, without marking the device itself disabled. Stale or missing registry data remains Unknown.
 - Show expected missing status from Ring chime sound controls as a device warning instead of an audit issue; preserve genuine unknown/unavailable diagnostics and identify their entities in device details.
 - Include event entities in availability diagnostics so Matter remotes and event-only devices with valid HA states no longer appear Unknown. Old event timestamps do not imply stale device data.
