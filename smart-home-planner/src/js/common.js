@@ -2758,7 +2758,9 @@ function getDeviceAvailability(device) {
 function getDeviceAvailabilityLabel(device) {
     if (!hasHomeAssistantSource(device)) return "";
     const info = getDeviceAvailability(device);
-    if (info.state === "not-monitored") return "HA availability: Not monitored — disabled in Home Assistant";
+    if (info.state === "not-monitored") return info.reason === "entities-disabled"
+        ? "HA availability: Not monitored — all entities disabled in Home Assistant"
+        : "HA availability: Not monitored — disabled in Home Assistant";
     const label = { available: "Available", partial: "Partially unavailable", unavailable: "Unavailable", unknown: "Unknown" }[info.state];
     if (!info.total && info.warnings.length) return "HA availability: No outage reported — control status not reported";
     return info.total ? `HA availability: ${label} · ${info.available}/${info.total} available`
@@ -2795,7 +2797,9 @@ function renderHaAvailabilityDetails(device) {
     heading.textContent = hasHomeAssistantSource(device) ? getDeviceAvailabilityLabel(device) : "No Home Assistant device linked.";
     target.append(heading);
     const counts = document.createElement("p");
-    counts.textContent = disabled && !info.total
+    counts.textContent = info.reason === "entities-disabled"
+        ? "All entities are disabled in Home Assistant, so there is no entity status to monitor. This does not indicate that the device itself is disabled or offline. It is excluded from the availability audit; planner status remains unchanged."
+        : disabled && !info.total
         ? "No enabled entity data is available for this disabled device. Disabled entities are excluded from availability checks."
         : !info.total && info.warnings.length
             ? "Only controls without reported status are present. No device health can be inferred from these controls."

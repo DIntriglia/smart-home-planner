@@ -132,3 +132,39 @@ test("Ring chime unknown control status is a warning, not an audit issue", () =>
     assert.equal(unknown.unknownEntities[0].entityId, "sensor.missing");
     assert.equal(summarize(device, {...mixed,checkedAt:1}, 120, now).state, "unknown");
 });
+
+
+test("all-disabled entity registries are not monitored without declaring the device disabled", () => {
+    const registry = [
+        {device_id:"one",entity_id:"sensor.diagnostic",disabled_by:"integration"},
+        {device_id:"one",entity_id:"sensor.counter",disabled_by:"user"}
+    ];
+    const data = buildSnapshot(registry, [], now);
+    const record = {...device,haDisabledState:"enabled",status:"working"};
+    const info = summarize(record, data, 0, now);
+    assert.equal(info.state, "not-monitored");
+    assert.equal(info.reason, "entities-disabled");
+    assert.equal(info.actionable, false);
+    assert.equal(record.haDisabledState, "enabled");
+    assert.equal(record.status, "working");
+    for (const invalid of [{...data,checkedAt:1},{...data,connected:false},snapshot([]),
+        {connected:true,checkedAt:now,entities:[]}]) {
+        assert.equal(summarize(record, invalid, 0, now).state, "unknown");
+    }
+    const enabled = buildSnapshot([{...registry[0],disabled_by:null},registry[1]], [], now);
+    assert.equal(summarize(record, enabled, 0, now).state, "unknown");
+    const offline = buildSnapshot([{...registry[0],disabled_by:null},registry[1]],
+        [{entity_id:"sensor.diagnostic",state:"unavailable",last_changed:new Date(now-180000).toISOString()}],now);
+    assert.equal(summarize(record, offline, 0, now).actionable, true);
+});
+
+test("linked devices require confirmed disabled entities for every linked registry", () => {
+    const record = {...device,haDeviceIds:["one","two"]};
+    const registry = [{device_id:"one",entity_id:"sensor.one",disabled_by:"integration"}];
+    assert.equal(summarize(record, buildSnapshot(registry,[],now),0,now).state,"unknown");
+    registry.push({device_id:"two",entity_id:"sensor.two",disabled_by:"user"});
+    assert.equal(summarize(record, buildSnapshot(registry,[],now),0,now).state,"not-monitored");
+    registry[1].disabled_by = null;
+    const data = buildSnapshot(registry,[{entity_id:"sensor.two",state:"on"}],now);
+    assert.equal(summarize(record,data,0,now).state,"available");
+});

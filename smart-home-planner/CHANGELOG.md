@@ -1,6 +1,7 @@
 ## 1.10.0 - 2026-09-18
 
 ### Fixed
+- Devices with all entities disabled (such as Zigbee coordinators) now show Not monitored instead of an availability audit issue, without marking the device itself disabled. Stale or missing registry data remains Unknown.
 - Show expected missing status from Ring chime sound controls as a device warning instead of an audit issue; preserve genuine unknown/unavailable diagnostics and identify their entities in device details.
 - Include event entities in availability diagnostics so Matter remotes and event-only devices with valid HA states no longer appear Unknown. Old event timestamps do not imply stale device data.
 - Hide empty dashboard diagnostic sections and their review/bulk-edit links.

@@ -2,6 +2,16 @@
 (() => {
     const STALE_MS = 120000;
     function buildSnapshot(registry, states, now = Date.now()) {
+        const registryByDevice = new Map();
+        for (const entity of registry) {
+            if (!entity.device_id) continue;
+            const entries = registryByDevice.get(entity.device_id) || [];
+            entries.push(entity);
+            registryByDevice.set(entity.device_id, entries);
+        }
+        const allEntitiesDisabledDeviceIds = [...registryByDevice]
+            .filter(([, entries]) => entries.every(entity => Boolean(entity.disabled_by)))
+            .map(([id]) => id);
         const byId = new Map(states.map(entity => [entity.entity_id, entity]));
         const entities = registry.filter(entity => entity.device_id && !entity.disabled_by &&
             !["button", "input_button", "scene"].includes(String(entity.entity_id).split(".")[0]))
@@ -22,18 +32,23 @@
                     unavailableSince: state === "unavailable" ? (Number.isFinite(changed) && changed <= now ? changed : now) : null
                 };
             });
-        return { connected: true, checkedAt: now, entities };
+        return { connected: true, checkedAt: now, entities, allEntitiesDisabledDeviceIds };
     }
     function summarize(device, snapshot, graceSeconds = 120, now = Date.now()) {
         const empty = { state: "unknown", total: 0, available: 0, unavailable: 0, unknown: 0, affected: [], unknownEntities: [], warnings: [], actionable: false };
         const linked = device?.homeAssistant === true || ["true", "1", "yes"].includes(String(device?.homeAssistant).toLowerCase());
         if (linked && device.haDisabledState === "disabled") {
-            return { ...empty, state: "not-monitored" };
+            return { ...empty, state: "not-monitored", reason: "device-disabled" };
         }
         if (!linked || !snapshot?.connected || !Number.isFinite(snapshot.checkedAt) ||
             now - snapshot.checkedAt > STALE_MS || snapshot.checkedAt > now + 5000) return empty;
         const ids = new Set(Array.isArray(device.haDeviceIds) && device.haDeviceIds.length ? device.haDeviceIds
             : Array.isArray(device.homeAssistantDeviceIds) && device.homeAssistantDeviceIds.length ? device.homeAssistantDeviceIds : [device.id]);
+        const allDisabledIds = new Set(Array.isArray(snapshot.allEntitiesDisabledDeviceIds)
+            ? snapshot.allEntitiesDisabledDeviceIds : []);
+        if (ids.size && [...ids].every(id => allDisabledIds.has(id))) {
+            return { ...empty, state: "not-monitored", reason: "entities-disabled" };
+        }
         const linkedEntities = (Array.isArray(snapshot.entities) ? snapshot.entities : []).filter(entity => entity && ids.has(entity.deviceId));
         const warnings = linkedEntities.filter(entity => entity.state === "stateless");
         const entities = linkedEntities.filter(entity => entity.state !== "stateless");
