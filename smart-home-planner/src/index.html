@@ -1633,7 +1633,7 @@
             heading.textContent = "Home Assistant diagnostics";
             target.append(heading);
             const summary = document.createElement("p");
-            summary.textContent = `Working in planner: ${attention.length} need attention · ${disabled.length} disabled in HA · ${unknown.length} availability unknown. Refreshes every 30 seconds; unavailable alerts respect the configured grace period.`;
+            summary.textContent = `Working in planner: ${attention.length} need attention · ${disabled.length} disabled in HA · ${unknown.length} availability unknown. Refreshes every 30 seconds; unavailable alerts respect the configured grace period. Entity issues do not change planner status or necessarily mean the whole device has failed.`;
             target.append(summary);
             for (const [title, items, query] of [
                 ["Needs attention", attention, "availability=attention"],
@@ -1652,16 +1652,26 @@
                     const detail = document.createElement("a");
                     detail.href = buildAppUrl(`device-edit.html?id=${encodeURIComponent(device.id)}`);
                     const info = getDeviceAvailability(device);
-                    detail.textContent = `${device.name || device.id} — ${getDeviceAvailabilityLabel(device)}`;
+                    const domains = getDeviceHaDomains(device);
+                    const status = info.state === "not-monitored" ? getDeviceAvailabilityLabel(device) : HaAvailability.diagnosticSummary(info);
+                    detail.textContent = `${device.name || device.id} · ${domains.join(", ") || "integration unknown"} — ${status}`;
                     row.append(detail);
-                    if (info.affected.length) {
-                        const affected = document.createElement("span");
-                        affected.textContent = ` · Unavailable: ${info.affected.slice(0, 3).map(entity => entity.name).join(", ")}${info.affected.length > 3 ? "…" : ""}`;
+                    for (const [label, entities] of [["Unavailable", info.affected], ["Unknown", info.unknownEntities]]) {
+                        if (!entities.length) continue;
+                        const affected = document.createElement("div");
+                        affected.textContent = `${label}: ${entities.slice(0, 3).map(entity => entity.name === entity.entityId
+                            ? entity.entityId : `${entity.name} (${entity.entityId})`).join(", ")}${entities.length > 3 ? ` · +${entities.length - 3} more (open device for details)` : ""}`;
                         row.append(affected);
                     }
                     list.append(row);
                 }
                 target.append(list);
+                if (items.length > 8) {
+                    const more = document.createElement("a");
+                    more.href = link.href;
+                    more.textContent = `Showing 8 of ${items.length} — View all`;
+                    target.append(more);
+                }
             }
         }
 

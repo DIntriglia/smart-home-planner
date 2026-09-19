@@ -64,5 +64,25 @@
             actionable: ["partial", "unavailable"].includes(state) && affected.some(entity =>
                 Number.isFinite(entity.unavailableSince) && now - entity.unavailableSince >= grace) };
     }
-    globalThis.HaAvailability = { buildSnapshot, summarize, STALE_MS };
+    function diagnosticSummary(info, now = Date.now()) {
+        if (info.state === "not-monitored") return "Not monitored";
+        if (!info.total) return "Unknown — no current entity data";
+        const allUnavailable = info.unavailable === info.total;
+        const status = allUnavailable ? "All monitored entities unavailable"
+            : info.unavailable ? "Some entities unavailable" : info.unknown ? "Some entity states unknown" : "Available";
+        let text = `${status} · ${info.available} available · ${info.unavailable} unavailable · ${info.unknown} unknown`;
+        const times = info.affected.map(entity => entity.unavailableSince);
+        if (times.length && times.every(time => Number.isFinite(time) && time <= now)) {
+            // An all-entity outage starts when the last entity becomes unavailable.
+            const since = allUnavailable ? Math.max(...times) : Math.min(...times);
+            const minutes = Math.floor((now - since) / 60000);
+            const duration = minutes < 1 ? "less than a minute" : minutes < 60
+                ? `${minutes} minute${minutes === 1 ? "" : "s"}` : minutes < 1440
+                ? `${Math.floor(minutes / 60)} hour${Math.floor(minutes / 60) === 1 ? "" : "s"}`
+                : `${Math.floor(minutes / 1440)} day${Math.floor(minutes / 1440) === 1 ? "" : "s"}`;
+            text += allUnavailable ? ` · All unavailable for ${duration}` : ` · Longest entity outage: ${duration}`;
+        }
+        return text;
+    }
+    globalThis.HaAvailability = { buildSnapshot, summarize, diagnosticSummary, STALE_MS };
 })();
