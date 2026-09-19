@@ -10,6 +10,7 @@ function resolveLabelColorSafe(value) {
 
 // Metadata used to render removable "active filter" chips in the header
 const FILTER_CHIP_FIELDS = [
+    { id: 'filter-device-source', label: 'Source', type: 'select' },
     { id: 'filter-name', label: 'Name', type: 'text' },
     { id: 'filter-floor', label: 'Floor', type: 'select' },
     { id: 'filter-area', label: 'Installed Area', type: 'select' },
@@ -86,6 +87,7 @@ class DeviceFilters {
             }
         };
 
+        setValue('filter-device-source', '');
         setValue('filter-name', '');
         setValue('filter-floor', '');
         setValue('filter-area', '');
@@ -128,6 +130,7 @@ class DeviceFilters {
     // Setup event listeners for filter controls
     setupEventListeners() {
         const filterIds = [
+            'filter-device-source',
             'filter-name',
             'filter-floor',
             'filter-area',
@@ -380,6 +383,15 @@ class DeviceFilters {
 
     // Update filter dropdown options
     updateFilterOptions() {
+        const sourceFilter = document.getElementById("filter-device-source");
+        if (sourceFilter) {
+            const current = sourceFilter.value;
+            const domains = [...new Set(this.devices.flatMap(getDeviceHaDomains))].sort();
+            sourceFilter.innerHTML = '<option value="">All sources</option><option value="manual">Manual</option>' +
+                (this.devices.some(hasHomeAssistantSource) ? '<option value="homeAssistant">Home Assistant (any integration)</option>' : '') +
+                domains.map(domain => `<option value="ha:${this.escapeHtml(domain)}">Home Assistant · ${this.escapeHtml(domain)}</option>`).join('');
+            sourceFilter.value = current;
+        }
         // Update floor filter
         const floorFilter = document.getElementById('filter-floor');
         const currentFloorValue = floorFilter ? floorFilter.value : '';
@@ -647,7 +659,7 @@ class DeviceFilters {
             console.log('Active filters:', appliedFilters);
         }
         
-        this.filteredDevices = this.devices;
+        this.filteredDevices = this.devices.filter(device => matchesDeviceSource(device, getElementValue('filter-device-source')));
 
         if (nameFilter) {
             this.filteredDevices = this.filteredDevices.filter(d =>
@@ -821,6 +833,7 @@ class DeviceFilters {
             }
         };
 
+        setValue('filter-device-source', '');
         setValue('filter-name', '');
         setValue('filter-floor', '');
         setValue('filter-area', '');

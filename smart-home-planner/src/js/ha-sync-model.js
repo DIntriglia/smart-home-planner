@@ -547,6 +547,17 @@ function buildStorageDevicesUpdate(storage, haDevices, allowedLabels) {
   for (const removed of removedDevices) {
     globalThis.clearReferencesToDevice(nextDevices, removed.id);
   }
+  for (let index = 0; index < nextDevices.length; index += 1) {
+    const device = nextDevices[index] = { ...nextDevices[index] };
+    const linked = getLinkedHaDeviceIds(device).map(id => registryById.get(id));
+    const domains = normalizeDomains(linked.flatMap(item => item?.integrationDomains || []));
+    if (linked.length && linked.every(item => item?.integrationMembershipResolved)) {
+      device.haIntegrationDomains = domains;
+    } else if (domains.length) {
+      device.haIntegrationDomains = normalizeDomains([...(device.haIntegrationDomains || []), ...domains]);
+    }
+    if (device.homeAssistant) device.source = "homeAssistant";
+  }
   const removedIds = new Set(removedDevices.map(device => device.id));
   const nextStorage = {
     ...storage,

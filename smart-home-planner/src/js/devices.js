@@ -852,7 +852,6 @@ function renderDevices() {
             const brandDisplay = getFriendlyOption(settings.brands, device.brand, formatDeviceType) || '-';
             const modelDisplay = device.model ? device.model.trim() : '-';
             const labelChips = renderDeviceLabelChips(device, labelMetaMap);
-            const isHaEnabled = isHomeAssistantLinked(device.homeAssistant);
             const normalizedStatus = normalizeStatusValue(device.status);
             const statusLabel = formatStatusLabel(normalizedStatus);
             return `
@@ -876,13 +875,7 @@ function renderDevices() {
                             </div>
                         </div>
                     </td>
-                    <td class="table-col-ha col-optional-md">
-                        ${isHaEnabled
-                            ? `<span class="ha-enabled-icon ha-enabled-icon-table" title="Home Assistant enabled" aria-label="Home Assistant enabled">
-                                <img src="img/ha.png" alt="Home Assistant" loading="lazy">
-                              </span>`
-                            : '<span class="table-empty-value">-</span>'}
-                    </td>
+                    <td class="device-source-cell">${escapeHtml(getDeviceSourceLabel(device))}</td>
                     <td class="col-area-installed">${escapeHtml(areaName)}</td>
                     <td class="col-area-controlled">${escapeHtml(controlledAreaName)}</td>
                     <td>${escapeHtml(brandDisplay)}</td>
@@ -967,6 +960,10 @@ function renderDevicesGrid(devicesToRender) {
                     <div class="device-card-title">${escapeHtml(device.name || 'Unnamed')}</div>
                 </div>
                 <div class="device-card-meta">
+                    <div class="device-card-meta-row">
+                        <span class="device-card-meta-label">Source</span>
+                        <span class="device-card-meta-value">${escapeHtml(getDeviceSourceLabel(device))}</span>
+                    </div>
                     <div class="device-card-meta-row">
                         <span class="device-card-meta-label">Installed Area</span>
                         <span class="device-card-meta-value">${escapeHtml(areaName)}</span>

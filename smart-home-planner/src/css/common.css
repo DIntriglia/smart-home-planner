@@ -4016,3 +4016,15 @@ select.is-open {
         border-left: none;
     }
 }
+
+.custom-field-definition {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.custom-field-definition input {
+    flex: 1 1 220px;
+    min-width: 0;
+}

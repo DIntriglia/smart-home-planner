@@ -2690,3 +2690,28 @@ window.getRuntimeInfo = getRuntimeInfo;
 window.loadHaConfig = loadHaConfig;
 window.loadHaBackupsStatus = loadHaBackupsStatus;
 window.showToast = showToast;
+
+// Source metadata is stored with inventory records so standalone/offline views
+// do not need to contact Home Assistant to explain where a device came from.
+function getDeviceHaDomains(device) {
+    return [...new Set((Array.isArray(device?.haIntegrationDomains) ? device.haIntegrationDomains : [])
+        .filter(value => typeof value === "string").map(value => value.trim().toLowerCase()).filter(Boolean))].sort();
+}
+
+function hasHomeAssistantSource(device) {
+    return device?.source === "homeAssistant" || normalizeHaIntegrationFlag(device?.homeAssistant) || getDeviceHaDomains(device).length > 0;
+}
+
+function getDeviceSourceLabel(device) {
+    if (!hasHomeAssistantSource(device)) return "Manual";
+    const domains = getDeviceHaDomains(device);
+    const label = domains.length ? `Home Assistant · ${domains.join(", ")}` : "Home Assistant · integration unknown";
+    return normalizeHaIntegrationFlag(device?.homeAssistant) ? label : `${label} (not linked)`;
+}
+
+function matchesDeviceSource(device, value) {
+    if (!value) return true;
+    if (value === "manual") return !hasHomeAssistantSource(device);
+    if (value === "homeAssistant") return hasHomeAssistantSource(device);
+    return value.startsWith("ha:") && getDeviceHaDomains(device).includes(value.slice(3));
+}

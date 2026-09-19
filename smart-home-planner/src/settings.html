@@ -264,6 +264,15 @@
                             <div class="settings-section">
                                 <h3 class="settings-section-title">Device Options</h3>
                                 <p class="settings-description">Manage the available options for brands, types, connectivity, and battery types used in device forms.</p>
+                                <h4>Custom Text Fields</h4>
+                                <p class="settings-description">Define reusable fields such as Matter Setup Code, then fill them in on each device. Archiving a field keeps its saved values.</p>
+                                <div id="custom-field-definitions"></div>
+                                <div class="form-group">
+                                    <label for="custom-field-name">New field name</label>
+                                    <input id="custom-field-name" type="text" maxlength="80" placeholder="Matter Setup Code">
+                                    <button type="button" class="btn btn-primary" id="custom-field-add">Add field</button>
+                                </div>
+                                <div id="custom-field-message" role="status"></div>
                                 <div id="options-management">
                                     <!-- Options will be rendered here -->
                                 </div>
@@ -759,6 +768,7 @@
     <script src="js/data-consistency.js"></script>
     <script src="js/ha-sync-model.js"></script>
     <script src="js/ha-integrations.js"></script>
+    <script src="js/custom-fields.js"></script>
     <script src="js/settings.js"></script>
     <!-- PDF export — jsPDF + autoTable plugin loaded from CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>

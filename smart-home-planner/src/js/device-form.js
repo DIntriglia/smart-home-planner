@@ -295,6 +295,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     allAreas = data.areas;
     allLabels = data.labels || [];
     settings = await loadSettings();
+    renderDeviceCustomFields(settings, {});
     const haConfig = typeof loadHaConfig === 'function' ? await loadHaConfig() : {};
     haDefaultCurrency = String(haConfig?.currency || '').trim().toUpperCase();
     haCountryCode = String(haConfig?.country || '').trim().toUpperCase();
@@ -2512,6 +2513,9 @@ async function loadDuplicateDeviceFromStorage() {
 }
 
 function loadDeviceData(device) {
+    renderDeviceCustomFields(settings, device.customFields);
+    const sourceDescription = document.getElementById("device-source-description");
+    if (sourceDescription) sourceDescription.textContent = editingDeviceId ? getDeviceSourceLabel(device) : "Manual";
     if (device && device.id) {
         activeDeviceId = String(device.id);
     }
@@ -2893,6 +2897,7 @@ async function handleDeviceSubmit(e) {
         warrantyExpiration: document.getElementById('device-warranty-expiration')?.value || '',
         storages: storagesResult.storages,
         notes: document.getElementById('device-notes').value,
+        customFields: readDeviceCustomFields(),
         links: linksResult.links,
         connectivity: connectivity,
         networkId: networkValue,
@@ -5783,6 +5788,7 @@ async function createDevice(deviceData) {
         storageSize: normalizedStorages[0]?.size ?? null,
         storageUnit: normalizedStorages[0]?.unit || '',
         notes: deviceData.notes ? deviceData.notes.trim() : '',
+        customFields: deviceData.customFields,
         links: normalizeDeviceLinks(deviceData.links),
         connectivity: normalizeOptionValue(deviceData.connectivity),
         networkId: deviceData.networkId || '',
@@ -5891,6 +5897,7 @@ async function updateDevice(id, deviceData, options = {}) {
         device.storageSize = normalizedStorages[0]?.size ?? null;
         device.storageUnit = normalizedStorages[0]?.unit || '';
         device.notes = deviceData.notes ? deviceData.notes.trim() : '';
+        device.customFields = { ...device.customFields, ...deviceData.customFields };
         device.links = normalizeDeviceLinks(deviceData.links);
         device.connectivity = normalizeOptionValue(deviceData.connectivity);
         device.networkId = deviceData.networkId || '';

@@ -119,3 +119,23 @@ test("browser storage normalization preserves integration exclusions during unre
     assert.deepEqual(JSON.parse(actual).integration_excluded_devices, ["one"]);
     assert.deepEqual(JSON.parse(actual).settings.haExcludedIntegrations, ["mqtt"]);
 });
+
+
+test("source domains are refreshed and custom field text survives registry sync", () => {
+    const record = { id: "local", homeAssistant: true, haDeviceIds: ["one", "two"], customFields: { matter: "0012-3456" } };
+    const result = sync(storage([], [record]), [ha("one"), ha("two", ["b"])]);
+    assert.deepEqual(result.nextStorage.devices[0].haIntegrationDomains, ["mqtt", "zha"]);
+    assert.equal(result.nextStorage.devices[0].source, "homeAssistant");
+    assert.equal(result.nextStorage.devices[0].customFields.matter, "0012-3456");
+    assert.equal(record.haIntegrationDomains, undefined);
+    const offline = sync(result.nextStorage, []);
+    assert.deepEqual(offline.nextStorage.devices[0].haIntegrationDomains, ["mqtt", "zha"]);
+    assert.equal(offline.nextStorage.devices[0].source, "homeAssistant");
+});
+
+test("partial metadata retains prior domains without mutating retained records", () => {
+    const record = { id: "local", homeAssistant: true, haDeviceIds: ["one", "missing"], haIntegrationDomains: ["zha"] };
+    const result = sync(storage(["mqtt"], [record]), [ha("one")]);
+    assert.deepEqual(result.nextStorage.devices[0].haIntegrationDomains, ["mqtt", "zha"]);
+    assert.deepEqual(record.haIntegrationDomains, ["zha"]);
+});

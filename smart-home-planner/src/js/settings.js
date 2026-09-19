@@ -51,6 +51,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         await renderNetworksManagement();
         await renderIspsManagement();
         renderOptionsManagement();
+        initializeCustomFieldSettings();
         renderTestCaseCategoriesManagement();
         applySettingsDeepLink(deepLink);
     } catch (error) {

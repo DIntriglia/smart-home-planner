@@ -542,6 +542,7 @@
     font-weight: 600;
     text-align: right;
     min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .device-card-actions {
@@ -790,4 +791,11 @@
     .table-container.area-target-controlled .col-area-installed {
         display: none;
     }
+}
+
+.device-source-cell {
+    min-width: 160px;
+    max-width: 240px;
+    white-space: normal;
+    overflow-wrap: anywhere;
 }

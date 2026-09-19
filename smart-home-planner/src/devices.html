@@ -239,6 +239,10 @@
                         </div>
                         <div class="filters-block">
                             <div class="filters-block-title">Integrations</div>
+                            <div class="filter-field">
+                                <label for="filter-device-source">Device source / HA integration</label>
+                                <select id="filter-device-source" class="filter-select"><option value="">All sources</option></select>
+                            </div>
                             <div class="filters-block-body">
                                 <div class="checkbox-chip-group">
                                     <label class="checkbox-chip">
@@ -368,8 +372,8 @@
                             <th class="sortable" data-sort="name">
                                 Name <span class="sort-icon"></span>
                             </th>
-                            <th class="sortable table-col-ha col-optional-md" data-sort="homeAssistant">
-                                HA <span class="sort-icon"></span>
+                            <th>
+                                Source
                             </th>
                             <th class="sortable col-area-installed" data-sort="area">
                                 Installed Area <span class="sort-icon"></span>

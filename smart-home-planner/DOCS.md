@@ -315,3 +315,14 @@ In **Settings → Home Assistant Integration → Integrations**, search for an i
 A device is removed only when all its integrations are unchecked. Linked inventory records stay while any associated Home Assistant device remains eligible. Removal uses the normal inventory deletion behavior: notes, attachments, and device/ISP connections are removed. A confirmation shows the number of existing records affected. Home Assistant itself is unchanged.
 
 Rechecking allows fresh imports immediately. It does not recover deleted metadata or undo independent manual/automatic exclusions. Integration-excluded devices appear in Excluded Devices with instructions to re-enable their integration. Unknown membership does not cause new removals, and saved exclusions survive unavailable integrations.
+
+
+## Device sources and custom text fields (1.10)
+
+The Devices table and cards show a **Source**: Manual, or Home Assistant with its integration domains (for example `mqtt`, `zha`, or `matter`). The device edit page shows the same information. Under **Devices → Filters → Integrations**, use **Device source / HA integration** to show manual devices, all Home Assistant devices, or one integration domain. Devices associated with several domains match each of them. This display filter does not change inventory or import preferences.
+
+Domains are refreshed during Home Assistant registry sync and stored with inventory records. Existing devices gain this information on the next sync. If membership is unavailable, the last known domains remain visible; devices without known domains say “integration unknown.” Manually entered devices and all custom fields work without Home Assistant.
+
+Define custom text fields under **Settings → Device Options → Custom Text Fields**, then enter values in **Custom Fields** on the add/edit device page. For example, create “Matter Setup Code” and enter the code as text, including leading zeros or hyphens. Fields use stable IDs: renaming a field keeps all values. Archiving hides empty inputs and keeps populated values visible as read-only; **Restore field** makes the field editable again. Fields and values are included in normal app backups and survive Home Assistant sync. Integration exclusion still deletes the whole inventory record, including its custom field values; re-import does not recover them.
+
+Custom text fields use the app’s normal storage and access controls; they are not a separate encrypted secret vault.

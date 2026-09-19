@@ -1,7 +1,13 @@
+## 1.10.0 - 2026-09-18
+
+### Added
+- Device source and Home Assistant integration domains in the device table, cards, and edit view, with a source/integration filter.
+- Reusable custom text fields under Settings → Device Options, with per-device values and non-destructive renaming and archiving.
+- Searchable integration import controls in Home Assistant settings, with bulk selection, device cleanup, and automatic reimport when re-enabled
+
 ## 1.9.0 - 2026-08-24
 
 ### Added
-- Searchable integration import controls in Home Assistant settings, with bulk selection, device cleanup, and automatic reimport when re-enabled
 - Automatic snapshots of your data, taken as you work and before anything that can remove data
 - New "Restore a Snapshot" section in Settings > Backup to roll back without a full Home Assistant backup
 - The app version is now shown in the footer, next to the app name
