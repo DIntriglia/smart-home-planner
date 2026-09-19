@@ -893,7 +893,7 @@ function renderDevices() {
                                 onerror="if(!this.dataset.fe){this.dataset.fe='1';this.src='img/devices/${escapeHtml(device.type || 'generic')}.svg';}else{this.src='img/devices/generic.svg';this.onerror=null;}"
                             >
                             <div class="device-name-inner-text">
-                                <strong>${escapeHtml(device.name || 'Unnamed')}</strong>
+                                <div class="device-name-heading"><strong>${escapeHtml(device.name || 'Unnamed')}</strong>${renderHaDisabledIndicator(device)}</div>
                                 ${labelChips ? `<div class="device-labels-inline device-labels-inline-table">${labelChips}</div>` : ''}
                             </div>
                         </div>
@@ -980,7 +980,7 @@ function renderDevicesGrid(devicesToRender) {
                     >
                 </div>
                 <div class="device-card-header">
-                    <div class="device-card-title">${escapeHtml(device.name || 'Unnamed')}</div>
+                    <div class="device-card-title">${escapeHtml(device.name || 'Unnamed')} ${renderHaDisabledIndicator(device)}</div>
                 </div>
                 <div class="device-card-meta">
                     <div class="device-card-meta-row">
@@ -1421,4 +1421,18 @@ function applyQueryFilters() {
             upsProtectedSelect.value = upsProtectedParam;
         }
     }
+}
+
+
+function renderHaDisabledIndicator(device) {
+    if (!matchesHaDisabledState(device, "any-disabled")) return "";
+    const label = device.haDisabledState === "mixed"
+        ? "Some linked devices are disabled in Home Assistant. Planner status is separate."
+        : "Disabled in Home Assistant. Planner status is separate.";
+    return `<span class="ha-disabled-indicator" role="img" tabindex="0" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">
+        <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+            <circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="1.8" />
+            <path d="M7.5 6.5v7m5-7v7" fill="none" stroke="currentColor" stroke-width="2.2" />
+        </svg>
+    </span>`;
 }

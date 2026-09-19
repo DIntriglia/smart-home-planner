@@ -1,6 +1,7 @@
 ## 1.10.0 - 2026-09-18
 
 ### Added
+- Amber disabled-state icons beside device names in table and card views, with accessible explanations for fully or partially disabled HA devices.
 - Prominent disabled-device warning at the top of device forms, with compact source information and expandable availability details.
 - Independent HA availability and enabled-state filters, entity diagnostics, and dashboard review lists for Working devices with unavailable entities or disabled HA devices. Availability has a configurable grace period and becomes Unknown when stale.
 - Decommissioned planner status, optional retirement date/reason, bulk editing, filtering, and a separate dashboard count. Retired devices are omitted from active dashboard statistics.

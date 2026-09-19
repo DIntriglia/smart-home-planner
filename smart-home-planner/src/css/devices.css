@@ -806,3 +806,19 @@
     font-size: 0.8rem;
     font-weight: 600;
 }
+
+.ha-disabled-indicator {
+    position: relative;
+    display: inline-flex;
+    width: 20px;
+    height: 20px;
+    margin-left: 0.3rem;
+    color: var(--warning-color);
+    vertical-align: middle;
+    flex-shrink: 0;
+}
+
+.ha-disabled-indicator svg { width: 20px; height: 20px; }
+.ha-disabled-indicator:focus-visible { outline: 2px solid var(--warning-color); outline-offset: 3px; }
+
+.device-name-heading { display: flex; align-items: center; gap: 0.25rem; }
