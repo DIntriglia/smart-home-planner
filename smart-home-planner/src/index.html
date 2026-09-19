@@ -1640,6 +1640,7 @@
                 ["Working but disabled in HA", disabled, "haState=any-disabled"],
                 ["Availability unknown", unknown, "availability=unknown"]
             ]) {
+                if (!items.length) continue;
                 const link = document.createElement("a");
                 link.className = "btn btn-secondary";
                 link.href = buildAppUrl(`devices.html?status=working&${query}`);
