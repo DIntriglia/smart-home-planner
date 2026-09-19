@@ -21,6 +21,7 @@ class IntegrationsApiTests(unittest.TestCase):
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.root = Path(self.directory.name)
+        server_module.AVAILABILITY_FILE = str(self.root / "availability.json")
         server_module.INTEGRATIONS_FILE = str(self.root / "integrations.json")
         server_module.DATA_FILE = str(self.root / "data.json")
         server_module.SNAPSHOTS_DIR = str(self.root / "snapshots")
@@ -34,6 +35,19 @@ class IntegrationsApiTests(unittest.TestCase):
         self.server.server_close()
         self.thread.join()
         self.directory.cleanup()
+
+    def test_availability_missing_corrupt_and_valid(self):
+        for content in [None, "not json", "{}"]:
+            if content is not None:
+                (self.root / "availability.json").write_text(content)
+            with self.assertRaises(HTTPError) as result:
+                urlopen(self.base + "/api/ha/availability")
+            self.assertEqual(result.exception.code, 503)
+            result.exception.close()
+        payload = {"connected": False, "checkedAt": 123, "entities": []}
+        (self.root / "availability.json").write_text(json.dumps(payload))
+        with urlopen(self.base + "/api/ha/availability") as response:
+            self.assertEqual(json.load(response), payload)
 
     def test_domains_are_sorted_deduplicated_and_sanitized(self):
         (self.root / "integrations.json").write_text(json.dumps([

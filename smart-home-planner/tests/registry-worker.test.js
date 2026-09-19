@@ -5,6 +5,7 @@ import path from "node:path";
 import vm from "node:vm";
 import "../src/js/data-consistency.js";
 import "../src/js/ha-sync-model.js";
+import "../src/js/ha-availability.js";
 
 async function workerFixture() {
     let source = await fs.readFile(new URL("../registry-sync.js", import.meta.url), "utf8");
@@ -27,7 +28,7 @@ async function workerFixture() {
         addEventListener(event, callback) { state[event] = callback; }
     };
     const context = vm.createContext({
-        HaSyncModel: globalThis.HaSyncModel, path, process: { env: { SUPERVISOR_TOKEN: "test" } },
+        HaAvailability: globalThis.HaAvailability, HaSyncModel: globalThis.HaSyncModel, path, process: { env: { SUPERVISOR_TOKEN: "test" } },
         WebSocket: class {}, createConnection: async () => conn, console: { log() {} }, setTimeout,
         fs: {
             async mkdir() {},
@@ -50,7 +51,7 @@ async function workerFixture() {
             return { ok: true, status: 204 };
         }
     });
-    vm.runInContext(source + "\nglobalThis.worker = { connectAndRun, syncAll, syncStorageDevicesFromRegistry, drain: () => registryQueue.get('all') };", context);
+    vm.runInContext(source + "\nglobalThis.worker = { connectAndRun, syncAll, syncStorageDevicesFromRegistry, availabilityDrain: () => availabilityQueue, refreshAvailability, drain: () => registryQueue.get('all') };", context);
     return { worker: context.worker, state, files, conn };
 }
 
@@ -92,4 +93,15 @@ test("ETag retry rebuilds against latest preferences and never cleans up rejecte
     assert.equal(state.storage.settings.concurrent, "keep");
     assert.equal(state.storage.devices[0].notes, "keep");
     assert.equal(state.deleted, undefined);
+});
+
+
+test("availability cache refreshes on reconnect and becomes unknown on disconnect", async () => {
+    const { worker, state, files } = await workerFixture();
+    await worker.connectAndRun();
+    assert.equal(JSON.parse(files.get("/data/availability.json")).connected, true);
+    state.disconnected(); await worker.availabilityDrain();
+    assert.equal(JSON.parse(files.get("/data/availability.json")).connected, false);
+    state.ready(); await worker.availabilityDrain(); await worker.drain();
+    assert.equal(JSON.parse(files.get("/data/availability.json")).connected, true);
 });

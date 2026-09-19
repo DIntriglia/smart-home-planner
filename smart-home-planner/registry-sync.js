@@ -6,6 +6,7 @@ import { createConnection } from "home-assistant-js-websocket";
 
 import "./src/js/data-consistency.js";
 import "./src/js/ha-sync-model.js";
+import "./src/js/ha-availability.js";
 const { buildStorageDevicesUpdate, enrichDevices, cleanupRemovedFiles } = globalThis.HaSyncModel;
 const normalizeString = value => String(value ?? "").trim();
 globalThis.WebSocket = WebSocket;
@@ -337,6 +338,27 @@ async function subscribeToUpdates(conn) {
   }
 }
 
+let availabilityQueue = Promise.resolve();
+let availabilityGeneration = 0;
+let availabilityConnected = false;
+function refreshAvailability(conn) {
+  const generation = availabilityGeneration;
+  availabilityQueue = availabilityQueue.catch(() => undefined).then(async () => {
+    if (!availabilityConnected || generation !== availabilityGeneration) return;
+    try {
+      const registry = await conn.sendMessagePromise({ type: "config/entity_registry/list" });
+      const states = await conn.sendMessagePromise({ type: "get_states" });
+      if (!Array.isArray(registry) || !Array.isArray(states)) throw new Error("Invalid entity snapshot");
+      const snapshot = globalThis.HaAvailability.buildSnapshot(registry, states);
+      if (availabilityConnected && generation === availabilityGeneration) await saveToData("availability.json", snapshot);
+    } catch (error) {
+      await saveToData("availability.json", { connected: false, checkedAt: Date.now(), entities: [] });
+      log(`Availability unavailable: ${error.message}`);
+    }
+  });
+  return availabilityQueue;
+}
+
 async function connectAndRun() {
   const token = (SUPERVISOR_TOKEN || "").trim();
   if (!token) {
@@ -362,6 +384,9 @@ async function connectAndRun() {
   log("Connection and authentication successful.");
 
   conn.addEventListener("ready", () => {
+    availabilityConnected = true;
+    availabilityGeneration += 1;
+    refreshAvailability(conn).catch(error => log(error.message));
     log("WebSocket connection ready. Re-syncing registries...");
     for (const registry of registries) {
       enqueueRegistrySync(conn, registry, "ready").catch(error => log(error.message));
@@ -369,6 +394,10 @@ async function connectAndRun() {
   });
 
   conn.addEventListener("disconnected", () => {
+    availabilityConnected = false;
+    availabilityGeneration += 1;
+    availabilityQueue = availabilityQueue.catch(() => undefined).then(() =>
+      saveToData("availability.json", { connected: false, checkedAt: Date.now(), entities: [] }));
     log("WebSocket disconnected. The library will retry automatically.");
   });
 
@@ -377,6 +406,8 @@ async function connectAndRun() {
     log(`WebSocket reconnect error: ${details}`);
   });
 
+  availabilityConnected = true;
+  await refreshAvailability(conn);
   await syncAll(conn, "startup");
   await subscribeToUpdates(conn);
 
@@ -388,10 +419,12 @@ async function main() {
   while (true) {
     try {
       const conn = await connectAndRun();
+      const availabilityTimer = setInterval(() => refreshAvailability(conn).catch(error => log(error.message)), 30000);
       await new Promise((resolve) => {
         process.once("SIGTERM", resolve);
         process.once("SIGINT", resolve);
       });
+      clearInterval(availabilityTimer);
       await conn.close();
       process.exit(0);
     } catch (error) {

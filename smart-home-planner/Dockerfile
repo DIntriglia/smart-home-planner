@@ -13,7 +13,7 @@ RUN cd /app && npm install --omit=dev
 COPY src/ /srv/
 COPY server.py /app/server.py
 COPY registry-sync.js /app/registry-sync.js
-COPY src/js/ha-sync-model.js src/js/data-consistency.js /app/src/js/
+COPY src/js/ha-sync-model.js src/js/ha-availability.js src/js/data-consistency.js /app/src/js/
 COPY ha-device-update.js /app/ha-device-update.js
 COPY config.yaml /app/config.yaml
 COPY run.sh /run.sh

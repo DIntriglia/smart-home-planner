@@ -25,6 +25,7 @@ DEVICE_FILES_DIR = os.path.join(DATA_DIR, "device-files")
 AREAS_FILE = os.path.join(DATA_DIR, "areas.json")
 FLOORS_FILE = os.path.join(DATA_DIR, "floors.json")
 DEVICES_FILE = os.path.join(DATA_DIR, "devices.json")
+AVAILABILITY_FILE = os.path.join(DATA_DIR, "availability.json")
 INTEGRATIONS_FILE = os.path.join(DATA_DIR, "integrations.json")
 LABELS_FILE = os.path.join(DATA_DIR, "labels.json")
 BACKUPS_DEBUG_FILE = os.path.join(DATA_DIR, "backups.json")
@@ -1564,6 +1565,17 @@ class AppHandler(SimpleHTTPRequestHandler):
             with _lock:
                 payload = _read_registry(FLOORS_FILE)
             self._send_json(200, payload)
+            return
+
+        if path == "/api/ha/availability":
+            try:
+                with open(AVAILABILITY_FILE, "r", encoding="utf-8") as handle:
+                    payload = json.load(handle)
+                if not isinstance(payload, dict) or not isinstance(payload.get("entities"), list):
+                    raise ValueError("Invalid availability cache")
+                self._send_json(200, payload)
+            except (OSError, ValueError):
+                self._send_json(503, {"error": "Home Assistant availability is unknown."})
             return
 
         if path == "/api/ha/integrations":
