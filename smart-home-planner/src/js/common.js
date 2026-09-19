@@ -2760,6 +2760,7 @@ function getDeviceAvailabilityLabel(device) {
     const info = getDeviceAvailability(device);
     if (info.state === "not-monitored") return "HA availability: Not monitored — disabled in Home Assistant";
     const label = { available: "Available", partial: "Partially unavailable", unavailable: "Unavailable", unknown: "Unknown" }[info.state];
+    if (!info.total && info.warnings.length) return "HA availability: No outage reported — control status not reported";
     return info.total ? `HA availability: ${label} · ${info.available}/${info.total} available`
         : `HA availability: ${label} — no current entity data`;
 }
@@ -2781,11 +2782,13 @@ function renderHaAvailabilityDetails(device) {
     const warning = document.getElementById("device-ha-warning");
     const disabled = matchesHaDisabledState(device, "any-disabled");
     if (warning) {
-        warning.hidden = !disabled;
-        document.getElementById("device-ha-warning-title").textContent = device.haDisabledState === "mixed"
+        warning.hidden = !disabled && !info.warnings.length;
+        document.getElementById("device-ha-warning-title").textContent = !disabled ? "Control status not reported" : device.haDisabledState === "mixed"
             ? "Some linked devices are disabled in Home Assistant" : "Disabled in Home Assistant";
         document.getElementById("device-ha-warning-message").textContent =
-            "Review this device in Home Assistant using View on HA above. Its planner status is managed separately.";
+            disabled ? "Review this device in Home Assistant using View on HA above. Its planner status is managed separately."
+                : info.warnings.map(entity => `${entity.name} (${entity.entityId})`).join(", ")
+                    + " — This Ring chime control does not report an on/off state. You can still trigger it in Home Assistant. This warning does not require action and is excluded from the dashboard audit.";
     }
     target.replaceChildren();
     const heading = document.createElement("p");
@@ -2794,13 +2797,15 @@ function renderHaAvailabilityDetails(device) {
     const counts = document.createElement("p");
     counts.textContent = disabled && !info.total
         ? "No enabled entity data is available for this disabled device. Disabled entities are excluded from availability checks."
-        : !info.total
+        : !info.total && info.warnings.length
+            ? "Only controls without reported status are present. No device health can be inferred from these controls."
+            : !info.total
             ? "No current entity data is available. Home Assistant may be disconnected, the data may be stale, or this device may have no eligible entities."
             : `${info.unavailable} unavailable · ${info.unknown} unknown. Disabled entities and action-only entities are excluded.`;
     target.append(counts);
-    for (const entity of info.affected) {
+    for (const entity of [...info.affected, ...info.unknownEntities]) {
         const row = document.createElement("p");
-        row.textContent = `${entity.name} (${entity.entityId}) — unavailable`;
+        row.textContent = `${entity.name} (${entity.entityId}) — ${entity.state === "unavailable" ? "unavailable" : "unknown"}`;
         target.append(row);
     }
 }

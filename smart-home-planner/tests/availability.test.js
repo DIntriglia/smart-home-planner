@@ -104,3 +104,31 @@ test("event entities preserve unavailable, unknown and missing states", () => {
     ], now);
     assert.equal(summarize(device, mixed, 120, now).state, "partial");
 });
+
+
+test("Ring chime unknown control status is a warning, not an audit issue", () => {
+    const chime = {device_id:"one",entity_id:"siren.chime",platform:"ring",unique_id:"123-siren"};
+    const sensor = {device_id:"one",entity_id:"sensor.volume"};
+    const build = (state, entries = [chime, sensor]) => buildSnapshot(entries, [
+        {entity_id:"siren.chime",state,last_changed:new Date(now - 180000).toISOString()},
+        {entity_id:"sensor.volume",state:"8"}
+    ], now);
+    const info = summarize(device, build("unknown"), 120, now);
+    assert.equal(info.state, "available");
+    assert.equal(info.total, 1);
+    assert.equal(info.warnings[0].entityId, "siren.chime");
+    assert.equal(info.actionable, false);
+    assert.equal(info.unknown, 0);
+    assert.equal(summarize(device, build("unknown", [chime]), 120, now).state, "available");
+    assert.equal(summarize(device, build("unavailable"), 120, now).actionable, true);
+    assert.equal(summarize(device, build(undefined), 120, now).unknown, 1);
+    for (const other of [{...chime,unique_id:"123"}, {...chime,platform:"other"}]) {
+        assert.equal(summarize(device, build("unknown", [other]), 120, now).state, "unknown");
+    }
+    const mixed = build("unknown");
+    mixed.entities.push({deviceId:"one",entityId:"sensor.missing",state:"unknown"});
+    const unknown = summarize(device, mixed, 120, now);
+    assert.equal(unknown.state, "unknown");
+    assert.equal(unknown.unknownEntities[0].entityId, "sensor.missing");
+    assert.equal(summarize(device, {...mixed,checkedAt:1}, 120, now).state, "unknown");
+});

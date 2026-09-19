@@ -8,7 +8,10 @@
             .map(entity => {
                 const current = byId.get(entity.entity_id);
                 const value = current?.state;
-                const state = value === "unavailable" ? "unavailable"
+                // Ring chimes expose a sound action without an on/off state; cameras do report state.
+                const stateless = entity.platform === "ring" && String(entity.entity_id).startsWith("siren.")
+                    && String(entity.unique_id || "").endsWith("-siren") && value === "unknown";
+                const state = stateless ? "stateless" : value === "unavailable" ? "unavailable"
                     : !current || typeof value !== "string" || value === "unknown" || value === "" ? "unknown" : "available";
                 const changed = Date.parse(current?.last_changed);
                 return {
@@ -22,7 +25,7 @@
         return { connected: true, checkedAt: now, entities };
     }
     function summarize(device, snapshot, graceSeconds = 120, now = Date.now()) {
-        const empty = { state: "unknown", total: 0, available: 0, unavailable: 0, unknown: 0, affected: [], actionable: false };
+        const empty = { state: "unknown", total: 0, available: 0, unavailable: 0, unknown: 0, affected: [], unknownEntities: [], warnings: [], actionable: false };
         const linked = device?.homeAssistant === true || ["true", "1", "yes"].includes(String(device?.homeAssistant).toLowerCase());
         if (linked && device.haDisabledState === "disabled") {
             return { ...empty, state: "not-monitored" };
@@ -31,15 +34,18 @@
             now - snapshot.checkedAt > STALE_MS || snapshot.checkedAt > now + 5000) return empty;
         const ids = new Set(Array.isArray(device.haDeviceIds) && device.haDeviceIds.length ? device.haDeviceIds
             : Array.isArray(device.homeAssistantDeviceIds) && device.homeAssistantDeviceIds.length ? device.homeAssistantDeviceIds : [device.id]);
-        const entities = (Array.isArray(snapshot.entities) ? snapshot.entities : []).filter(entity => entity && ids.has(entity.deviceId));
+        const linkedEntities = (Array.isArray(snapshot.entities) ? snapshot.entities : []).filter(entity => entity && ids.has(entity.deviceId));
+        const warnings = linkedEntities.filter(entity => entity.state === "stateless");
+        const entities = linkedEntities.filter(entity => entity.state !== "stateless");
+        const unknownEntities = entities.filter(entity => !["available", "unavailable"].includes(entity.state));
         const available = entities.filter(entity => entity.state === "available").length;
         const affected = entities.filter(entity => entity.state === "unavailable");
         const unavailable = affected.length;
         const unknown = entities.length - available - unavailable;
-        const state = !entities.length ? "unknown" : unavailable === entities.length ? "unavailable"
+        const state = !entities.length ? (warnings.length ? "available" : "unknown") : unavailable === entities.length ? "unavailable"
             : unavailable && available ? "partial" : available === entities.length ? "available" : "unknown";
         const grace = Math.max(0, Math.min(3600, Number.isFinite(Number(graceSeconds)) ? Number(graceSeconds) : 120)) * 1000;
-        return { state, total: entities.length, available, unavailable, unknown, affected,
+        return { state, total: entities.length, available, unavailable, unknown, affected, unknownEntities, warnings,
             actionable: ["partial", "unavailable"].includes(state) && affected.some(entity =>
                 Number.isFinite(entity.unavailableSince) && now - entity.unavailableSince >= grace) };
     }
