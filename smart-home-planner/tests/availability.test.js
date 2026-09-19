@@ -38,3 +38,13 @@ test("multi-device records aggregate linked entities, never mutate planner statu
     assert.equal(summarize(record,data,0,now).state,"partial");
     assert.equal(record.status,"working");
 });
+
+
+test("missing, malformed, future and empty observations remain unknown", () => {
+    for (const data of [null, {connected:true,checkedAt:now,entities:{}}, {connected:true,checkedAt:now,entities:[null]},
+        {connected:true,checkedAt:now+60000,entities:[]}, snapshot([])]) {
+        assert.equal(summarize(device,data,0,now).state,"unknown");
+    }
+    const missing = buildSnapshot([{device_id:"one",entity_id:"sensor.missing"}],[],now);
+    assert.equal(summarize(device,missing,0,now).unknown,1);
+});

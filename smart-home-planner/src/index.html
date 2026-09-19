@@ -650,6 +650,13 @@
             }
         }
 
+        #ha-diagnostics { margin-bottom: 1.5rem; }
+        #ha-diagnostics .btn { white-space: normal; text-align: left; max-width: 100%; }
+        #ha-diagnostics ul { padding-left: 1.2rem; margin: 0.75rem 0 1.25rem; }
+        #ha-diagnostics > p { color: var(--text-secondary); margin: 0.75rem 0; line-height: 1.5; }
+        #ha-diagnostics li a { color: var(--primary-text); text-decoration: none; }
+        #ha-diagnostics li a:hover { text-decoration: underline; }
+        #ha-diagnostics li { margin-bottom: 0.5rem; overflow-wrap: anywhere; }
         body {
             padding-bottom: 3rem;
         }
@@ -681,6 +688,7 @@
         </header>
 
         <section class="home-cards">
+            <section class="dashboard-card" id="ha-diagnostics" aria-label="Home Assistant diagnostics"></section>
             <div class="dashboard" id="dashboard">
                 <!-- Dashboard cards will be rendered here -->
             </div>
@@ -1038,6 +1046,7 @@
     </div>
 
     <script src="js/metadata.js"></script>
+    <script src="js/ha-availability.js"></script>
     <script src="js/common.js"></script>
     <script src="js/data-consistency.js"></script>
     <script>
@@ -1055,6 +1064,8 @@
             haCountry = String(haConfig?.country || '').trim().toUpperCase();
             const dashboard = document.getElementById('dashboard');
             const inventory = data.devices || [];
+            renderHaDiagnostics(inventory);
+            window.addEventListener("ha-availability-updated", () => renderHaDiagnostics(inventory));
             const retiredCount = inventory.filter(device => device.status === "decommissioned").length;
             const devices = inventory.filter(device => device.status !== "decommissioned");
             const testCases = data.testCases || [];
@@ -1608,6 +1619,49 @@
                 maxItems: getLegendMaxItems(),
                 emptyMessage: 'No wishlist devices'
             });
+        }
+
+        function renderHaDiagnostics(devices) {
+            const target = document.getElementById("ha-diagnostics");
+            target.hidden = !devices.some(hasHomeAssistantSource);
+            const working = devices.filter(device => device.status === "working" && normalizeHaIntegrationFlag(device.homeAssistant));
+            const attention = working.filter(device => getDeviceAvailability(device).actionable);
+            const disabled = working.filter(device => matchesHaDisabledState(device, "any-disabled"));
+            const unknown = working.filter(device => getDeviceAvailability(device).state === "unknown");
+            target.replaceChildren();
+            const heading = document.createElement("h3");
+            heading.textContent = "Home Assistant diagnostics";
+            target.append(heading);
+            const summary = document.createElement("p");
+            summary.textContent = `Working in planner: ${attention.length} need attention · ${disabled.length} disabled in HA · ${unknown.length} availability unknown. Refreshes every 30 seconds; unavailable alerts respect the configured grace period.`;
+            target.append(summary);
+            for (const [title, items, query] of [
+                ["Needs attention", attention, "availability=attention"],
+                ["Working but disabled in HA", disabled, "haState=any-disabled"],
+                ["Availability unknown", unknown, "availability=unknown"]
+            ]) {
+                const link = document.createElement("a");
+                link.className = "btn btn-secondary";
+                link.href = buildAppUrl(`devices.html?status=working&${query}`);
+                link.textContent = `${title} (${items.length}) — review / bulk edit`;
+                target.append(link);
+                const list = document.createElement("ul");
+                for (const device of items.slice(0, 8)) {
+                    const row = document.createElement("li");
+                    const detail = document.createElement("a");
+                    detail.href = buildAppUrl(`device-edit.html?id=${encodeURIComponent(device.id)}`);
+                    const info = getDeviceAvailability(device);
+                    detail.textContent = `${device.name || device.id} — ${getDeviceAvailabilityLabel(device)}`;
+                    row.append(detail);
+                    if (info.affected.length) {
+                        const affected = document.createElement("span");
+                        affected.textContent = ` · Unavailable: ${info.affected.slice(0, 3).map(entity => entity.name).join(", ")}${info.affected.length > 3 ? "…" : ""}`;
+                        row.append(affected);
+                    }
+                    list.append(row);
+                }
+                target.append(list);
+            }
         }
 
         function renderNotWorkingDevices(targetId, devices) {

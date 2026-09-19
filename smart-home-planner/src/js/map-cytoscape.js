@@ -2330,6 +2330,10 @@ function initializeCytoscape() {
                     'border-color': '#f0383b'
                 }
             },
+            {
+                selector: 'node[type="device"][status="decommissioned"]',
+                style: { 'border-color': '#808080' }
+            },
             // Device working status
             {
                 selector: 'node[type="device"][status="working"]',

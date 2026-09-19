@@ -9,7 +9,7 @@
                 const current = byId.get(entity.entity_id);
                 const value = current?.state;
                 const state = value === "unavailable" ? "unavailable"
-                    : !current || value == null || value === "unknown" || value === "" ? "unknown" : "available";
+                    : !current || typeof value !== "string" || value === "unknown" || value === "" ? "unknown" : "available";
                 const changed = Date.parse(current?.last_changed);
                 return {
                     deviceId: entity.device_id,
@@ -28,7 +28,7 @@
             now - snapshot.checkedAt > STALE_MS || snapshot.checkedAt > now + 5000) return empty;
         const ids = new Set(Array.isArray(device.haDeviceIds) && device.haDeviceIds.length ? device.haDeviceIds
             : Array.isArray(device.homeAssistantDeviceIds) && device.homeAssistantDeviceIds.length ? device.homeAssistantDeviceIds : [device.id]);
-        const entities = (snapshot.entities || []).filter(entity => ids.has(entity.deviceId));
+        const entities = (Array.isArray(snapshot.entities) ? snapshot.entities : []).filter(entity => entity && ids.has(entity.deviceId));
         const available = entities.filter(entity => entity.state === "available").length;
         const affected = entities.filter(entity => entity.state === "unavailable");
         const unavailable = affected.length;

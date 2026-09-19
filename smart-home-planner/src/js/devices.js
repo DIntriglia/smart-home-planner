@@ -34,6 +34,7 @@ let viewMode = 'table';
 let selectedDeviceIds = new Set();
 let currentPageDeviceIds = [];
 let bulkEditVisible = false;
+let availabilityRefreshInProgress = false;
 const DEVICE_FILES_DELETE_API_URL =
     typeof window.buildAppUrl === 'function' ? window.buildAppUrl('api/device-files') : '/api/device-files';
 const HA_DEVICE_AREA_SYNC_API_URL =
@@ -105,9 +106,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     deviceFilters.init(devices, areas, floors, networks, settings, labels);
     deviceFilters.onFilterChange = (filtered) => {
         filteredDevices = filtered;
-        selectedDeviceIds.clear();
-        currentPageDeviceIds = [];
-        currentPage = 1;
+        if (availabilityRefreshInProgress) {
+            const matching = new Set(filtered.map(device => device.id));
+            for (const id of selectedDeviceIds) if (!matching.has(id)) selectedDeviceIds.delete(id);
+        } else {
+            selectedDeviceIds.clear();
+            currentPageDeviceIds = [];
+            currentPage = 1;
+        }
         renderDevices();
     };
     
@@ -116,6 +122,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     setBulkEditVisible(false, { skipRender: true, force: true });
     populateBulkEditOptions();
     await initializeViewToggle();
+    window.addEventListener("ha-availability-updated", () => {
+        availabilityRefreshInProgress = true;
+        try { deviceFilters.applyFilters(); } finally { availabilityRefreshInProgress = false; }
+    });
     applyQueryFilters();
     deviceFilters.applyFilters();
 });
@@ -888,7 +898,7 @@ function renderDevices() {
                             </div>
                         </div>
                     </td>
-                    <td class="device-source-cell">${escapeHtml(getDeviceSourceLabel(device))}<div class="device-ha-state">${escapeHtml(getDeviceHaDisabledLabel(device))}</div></td>
+                    <td class="device-source-cell">${escapeHtml(getDeviceSourceLabel(device))}<div class="device-ha-state">${escapeHtml(getDeviceHaDisabledLabel(device))}</div><div class="device-ha-state">${escapeHtml(getDeviceAvailabilityLabel(device))}</div></td>
                     <td class="col-area-installed">${escapeHtml(areaName)}</td>
                     <td class="col-area-controlled">${escapeHtml(controlledAreaName)}</td>
                     <td>${escapeHtml(brandDisplay)}</td>
@@ -975,7 +985,7 @@ function renderDevicesGrid(devicesToRender) {
                 <div class="device-card-meta">
                     <div class="device-card-meta-row">
                         <span class="device-card-meta-label">Source</span>
-                        <span class="device-card-meta-value">${escapeHtml(getDeviceSourceLabel(device))}<span class="device-ha-state">${escapeHtml(getDeviceHaDisabledLabel(device))}</span></span>
+                        <span class="device-card-meta-value">${escapeHtml(getDeviceSourceLabel(device))}<span class="device-ha-state">${escapeHtml(getDeviceHaDisabledLabel(device))}</span><span class="device-ha-state">${escapeHtml(getDeviceAvailabilityLabel(device))}</span></span>
                     </div>
                     <div class="device-card-meta-row">
                         <span class="device-card-meta-label">Installed Area</span>
@@ -1329,6 +1339,9 @@ function formatDeviceType(typeSlug) {
 
 function applyQueryFilters() {
     const params = new URLSearchParams(window.location.search);
+    for (const [key, id] of [["status", "filter-status"], ["availability", "filter-ha-availability"], ["haState", "filter-ha-disabled"]]) {
+        if (params.has(key)) document.getElementById(id).value = params.get(key);
+    }
     const batteryTypeParam = params.get('batteryType');
     const typeParam = params.get('type');
     const connectivityParam = params.get('connectivity');

@@ -182,7 +182,7 @@
                         <div class="form-row">
                             <div class="form-group">
                                 <div class="form-label-row">
-                                    <label for="device-status">Status *</label>
+                                    <label for="device-status">Planner status *</label>
                                     <button class="btn btn-secondary btn-sm btn-icon form-help-btn" type="button" id="status-help-btn" aria-label="Status info" title="More Info">
                                         <svg viewBox="0 0 24 24" aria-hidden="true">
                                             <circle cx="12" cy="12" r="9"></circle>
@@ -623,6 +623,7 @@
                     <div class="form-section">
                         <h3 class="form-section-title">Device source</h3>
                         <p id="device-source-description">Manual</p>
+                        <details><summary>Home Assistant availability details</summary><div id="ha-availability-details"></div></details>
                     </div>
                     <!-- Integrations -->
                     <div class="form-section">
@@ -889,6 +890,8 @@
                         <span class="status-badge status-not-working">Not Working</span>
                         <span>installed but not functioning.</span>
                     </li>
+                    <li><span class="status-badge status-decommissioned">Decommissioned</span><span>intentionally retired; history is retained.</span>
+                    </li>
                     <li>
                         <span class="status-badge status-wishlist">Wishlist</span>
                         <span>planned or desired device.</span>
@@ -1143,6 +1146,7 @@
     </div>
 
     <script src="js/metadata.js"></script>
+    <script src="js/ha-availability.js"></script>
     <script src="js/common.js"></script>
     <script src="js/data-consistency.js"></script>
     <script src="js/custom-fields.js"></script>

@@ -335,3 +335,18 @@ The source column, device cards, and edit page show whether linked Home Assistan
 To mark disabled devices **Not Working**, open **Devices → Filters → Integrations → Home Assistant device state → Any linked HA device disabled**. Enable **Bulk Edit**, click **Select all filtered** to select matches across every page (or select individual devices; the table header selects the current page), choose **Field → Status → Not Working**, then apply. For multi-device records where every linked device must be disabled, use **All linked HA devices disabled** instead. The planner status stays under your control: sync updates the HA state without overwriting your chosen status or enabling/disabling anything in Home Assistant.
 
 Existing import rules still skip newly discovered HA devices disabled by the user or their config entry. The disabled-state filter applies to devices already in your planner inventory.
+
+
+## Planner lifecycle and Home Assistant diagnostics
+
+Three independent fields describe a device:
+
+- **Planner status** is your decision: Working, Pending, Not Working, Wishlist, or Decommissioned. Neither availability nor HA enable/disable changes it automatically.
+- **HA enabled state** comes from the device registry and indicates enabled, disabled, partially disabled, or unknown.
+- **HA availability** aggregates relevant enabled entities into Available, Partially unavailable, Unavailable, or Unknown. Entity values such as `off` and `0` count as available. Disabled entities and action-only button, input-button, scene, and event entities are excluded. Diagnostic sensors are included; one failing sensor can produce Partially unavailable. Open the device's availability details for affected names and entity IDs.
+
+The Devices filters support all three independently. Manual devices continue to work without Home Assistant; HA-only filters omit them. Availability is cached separately from inventory, contains no raw entity values or attributes, and refreshes every 30 seconds. Disconnected, failed, missing, or more-than-two-minute-old snapshots are Unknown. Without suitable entities, availability is also Unknown. Unknown is not treated as an outage.
+
+The dashboard's **Home Assistant diagnostics** shows Working devices that have unavailable entities past the grace period, Working devices disabled in HA, and Working devices whose availability is Unknown. Each list links to the matching Devices filters for review and bulk editing. Lists preview up to eight devices; the review link includes all matches. Set the grace period under **Settings → Home Assistant Integration → Availability diagnostics** (default 120 seconds, allowed 0–3600 seconds). Raw availability remains visible during the grace period; it only delays the Needs attention list. At least one unavailable entity must have remained unavailable for the grace period. Background refresh preserves selections still matching your filters and drops selections that no longer match.
+
+Choose **Decommissioned** when intentionally retiring equipment. Optional retirement date and reason appear on the device form. Retired records are excluded from active dashboard charts/health statistics and have their own count linking to the inventory. Notes, custom fields, and attachments remain intact when HA removes or later rediscovers the device. Explicit planner deletion or integration exclusion still removes the record. Use the existing View on HA link to manage the HA device separately: retirement never disables or deletes anything in Home Assistant.

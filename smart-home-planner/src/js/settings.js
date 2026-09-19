@@ -45,6 +45,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         settings = await loadSettings();
         renderHaIntegrationSettings();
+        initializeAvailabilitySettings();
         await initializeHaIntegrations();
         renderNotificationSettings();
         await renderExcludedDevicesManagement();
@@ -2168,4 +2169,33 @@ async function _notifAutoSave() {
     } catch (error) {
         _notifShowFeedback(error?.message || 'Failed to save', true);
     }
+}
+
+function initializeAvailabilitySettings() {
+    const input = document.getElementById("ha-availability-grace");
+    const button = document.getElementById("ha-availability-save");
+    const message = document.getElementById("ha-availability-message");
+    input.value = settings.haAvailabilityGraceSeconds ?? 120;
+    button.addEventListener("click", async () => {
+        const value = Number(input.value);
+        if (!input.value || !Number.isInteger(value) || value < 0 || value > 3600) {
+            message.textContent = "Enter a whole number from 0 to 3600.";
+            return;
+        }
+        button.disabled = true;
+        try {
+            await enqueueStorageWrite(async () => {
+                const response = await fetch(buildAppUrl("api/storage"), { cache: "no-store" });
+                if (!response.ok) throw new Error("Unable to read current settings.");
+                const snapshot = await response.json();
+                snapshot.settings = { ...snapshot.settings, haAvailabilityGraceSeconds: value };
+                storageEtag = parseStorageEtag(response);
+                await putStoragePayload(snapshot);
+                storageCache = mergeStorage(snapshot);
+                settings = normalizeSettings(snapshot.settings);
+            });
+            message.textContent = "Grace period saved.";
+        } catch (error) { message.textContent = error.message; }
+        finally { button.disabled = false; }
+    });
 }

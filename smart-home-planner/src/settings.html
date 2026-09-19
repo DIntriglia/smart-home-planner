@@ -343,6 +343,14 @@
                                 </div>
                             </div>
 
+                            <section class="settings-section">
+                                <h3>Availability diagnostics</h3>
+                                <p>Dashboard alerts wait for this grace period. Availability is checked every 30 seconds; data older than two minutes is Unknown. Planner status is never changed automatically.</p>
+                                <label for="ha-availability-grace">Unavailable grace period (seconds, 0–3600)</label>
+                                <input type="number" id="ha-availability-grace" min="0" max="3600" step="1" value="120">
+                                <button type="button" class="btn btn-secondary" id="ha-availability-save">Save grace period</button>
+                                <p id="ha-availability-message" role="status"></p>
+                            </section>
                             <section class="settings-section" id="ha-integrations-section">
                                 <h3 class="settings-section-title">Integrations</h3>
                                 <p class="settings-description">Choose which Home Assistant integrations can import devices. Unchecking removes devices only when all their integrations are unchecked. Rechecking imports fresh records; deleted notes and attachments are not restored.</p>
@@ -764,6 +772,7 @@
     </div>
 
     <script src="js/metadata.js"></script>
+    <script src="js/ha-availability.js"></script>
     <script src="js/common.js"></script>
     <script src="js/data-consistency.js"></script>
     <script src="js/ha-sync-model.js"></script>

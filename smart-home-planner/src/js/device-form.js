@@ -296,6 +296,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     allLabels = data.labels || [];
     settings = await loadSettings();
     renderDeviceCustomFields(settings, {});
+    window.addEventListener("ha-availability-updated", () => {
+        renderHaAvailabilityDetails(allDevices.find(device => device.id === editingDeviceId) || {});
+    });
     const haConfig = typeof loadHaConfig === 'function' ? await loadHaConfig() : {};
     haDefaultCurrency = String(haConfig?.currency || '').trim().toUpperCase();
     haCountryCode = String(haConfig?.country || '').trim().toUpperCase();
@@ -2513,6 +2516,7 @@ async function loadDuplicateDeviceFromStorage() {
 }
 
 function loadDeviceData(device) {
+    renderHaAvailabilityDetails(device);
     document.getElementById("device-retired-date").value = device.retiredDate || "";
     document.getElementById("device-retired-reason").value = device.retiredReason || "";
     renderDeviceCustomFields(settings, device.customFields);

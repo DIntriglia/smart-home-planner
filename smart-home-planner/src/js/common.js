@@ -832,6 +832,7 @@ function migrateDevicePorts(deviceList) {
 // Data Management Functions
 async function loadData() {
     const storage = await loadStorage();
+    await refreshHaAvailability();
     const devices = Array.isArray(storage.devices) ? storage.devices : [];
     const testCases = Array.isArray(storage.testCases) ? storage.testCases : [];
     const testCaseRuns = Array.isArray(storage.testCaseRuns) ? storage.testCaseRuns : [];
@@ -2732,4 +2733,54 @@ function matchesHaDisabledState(device, value) {
     if (!normalizeHaIntegrationFlag(device?.homeAssistant)) return false;
     const state = device.haDisabledState || "unknown";
     return value === "any-disabled" ? ["disabled", "mixed"].includes(state) : state === value;
+}
+
+
+let haAvailabilitySnapshot = null;
+let haAvailabilityLoading = null;
+let haAvailabilityTimer = null;
+async function refreshHaAvailability() {
+    if (haAvailabilityLoading) return haAvailabilityLoading;
+    haAvailabilityLoading = (async () => {
+        try {
+            const response = await fetch(buildAppUrl("api/ha/availability"), { cache: "no-store", signal: AbortSignal.timeout(10000) });
+            haAvailabilitySnapshot = response.ok ? await response.json() : null;
+        } catch (_error) { haAvailabilitySnapshot = null; }
+        finally { haAvailabilityLoading = null; }
+        window.dispatchEvent(new Event("ha-availability-updated"));
+    })();
+    if (!haAvailabilityTimer) haAvailabilityTimer = setInterval(refreshHaAvailability, 30000);
+    return haAvailabilityLoading;
+}
+function getDeviceAvailability(device) {
+    return HaAvailability.summarize(device, haAvailabilitySnapshot, storageCache?.settings?.haAvailabilityGraceSeconds ?? 120);
+}
+function getDeviceAvailabilityLabel(device) {
+    if (!hasHomeAssistantSource(device)) return "";
+    const info = getDeviceAvailability(device);
+    const label = { available: "Available", partial: "Partially unavailable", unavailable: "Unavailable", unknown: "Unknown" }[info.state];
+    return `HA availability: ${label} · ${info.available}/${info.total} available`;
+}
+function matchesHaAvailability(device, value) {
+    if (!value) return true;
+    if (!normalizeHaIntegrationFlag(device?.homeAssistant)) return false;
+    const info = getDeviceAvailability(device);
+    return value === "attention" ? info.actionable : info.state === value;
+}
+function renderHaAvailabilityDetails(device) {
+    const target = document.getElementById("ha-availability-details");
+    if (!target) return;
+    const info = getDeviceAvailability(device);
+    target.replaceChildren();
+    const heading = document.createElement("p");
+    heading.textContent = hasHomeAssistantSource(device) ? getDeviceAvailabilityLabel(device) : "No Home Assistant device linked.";
+    target.append(heading);
+    const counts = document.createElement("p");
+    counts.textContent = `${info.unavailable} unavailable · ${info.unknown} unknown. Disabled entities and action-only entities are excluded. Unknown may mean missing or stale HA data.`;
+    target.append(counts);
+    for (const entity of info.affected) {
+        const row = document.createElement("p");
+        row.textContent = `${entity.name} (${entity.entityId}) — unavailable`;
+        target.append(row);
+    }
 }

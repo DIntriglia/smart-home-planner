@@ -1,6 +1,7 @@
 ## 1.10.0 - 2026-09-18
 
 ### Added
+- Independent HA availability and enabled-state filters, entity diagnostics, and dashboard review lists for Working devices with unavailable entities or disabled HA devices. Availability has a configurable grace period and becomes Unknown when stale.
 - Decommissioned planner status, optional retirement date/reason, bulk editing, filtering, and a separate dashboard count. Retired devices are omitted from active dashboard statistics.
 - Home Assistant enabled/disabled state in device views and filters, including partially disabled linked devices. Filter disabled devices and use Bulk Edit → Status to set Not Working without changing Home Assistant.
 - Device source and Home Assistant integration domains in the device table, cards, and edit view, with a source/integration filter.

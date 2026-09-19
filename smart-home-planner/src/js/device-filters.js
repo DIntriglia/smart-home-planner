@@ -10,6 +10,7 @@ function resolveLabelColorSafe(value) {
 
 // Metadata used to render removable "active filter" chips in the header
 const FILTER_CHIP_FIELDS = [
+    { id: 'filter-ha-availability', label: 'HA availability', type: 'select' },
     { id: 'filter-ha-disabled', label: 'HA state', type: 'select' },
     { id: 'filter-device-source', label: 'Source', type: 'select' },
     { id: 'filter-name', label: 'Name', type: 'text' },
@@ -88,6 +89,7 @@ class DeviceFilters {
             }
         };
 
+        setValue('filter-ha-availability', '');
         setValue('filter-ha-disabled', '');
         setValue('filter-device-source', '');
         setValue('filter-name', '');
@@ -132,6 +134,7 @@ class DeviceFilters {
     // Setup event listeners for filter controls
     setupEventListeners() {
         const filterIds = [
+            'filter-ha-availability',
             'filter-ha-disabled',
             'filter-device-source',
             'filter-name',
@@ -663,7 +666,8 @@ class DeviceFilters {
         }
         
         this.filteredDevices = this.devices.filter(device => matchesDeviceSource(device, getElementValue('filter-device-source')) &&
-            matchesHaDisabledState(device, getElementValue('filter-ha-disabled')));
+            matchesHaDisabledState(device, getElementValue('filter-ha-disabled')) &&
+            matchesHaAvailability(device, getElementValue('filter-ha-availability')));
 
         if (nameFilter) {
             this.filteredDevices = this.filteredDevices.filter(d =>
@@ -837,6 +841,7 @@ class DeviceFilters {
             }
         };
 
+        setValue('filter-ha-availability', '');
         setValue('filter-ha-disabled', '');
         setValue('filter-device-source', '');
         setValue('filter-name', '');

@@ -149,7 +149,7 @@
                                     </select>
                                 </div>
                                 <div class="filter-field">
-                                    <label for="filter-status">Status</label>
+                                    <label for="filter-status">Planner status</label>
                                     <select id="filter-status" class="filter-select">
                                         <option value="">All</option>
                                         <option value="working">Working</option>
@@ -241,7 +241,18 @@
                         <div class="filters-block">
                             <div class="filters-block-title">Integrations</div>
                             <div class="filter-field">
-                                <label for="filter-ha-disabled">Home Assistant device state</label>
+                                <label for="filter-ha-availability">HA availability</label>
+                                <select id="filter-ha-availability" class="filter-select">
+                                    <option value="">All availability</option>
+                                    <option value="available">Available</option>
+                                    <option value="partial">Partially unavailable</option>
+                                    <option value="unavailable">Unavailable</option>
+                                    <option value="unknown">Unknown</option>
+                                    <option value="attention">Unavailable after grace period</option>
+                                </select>
+                            </div>
+                            <div class="filter-field">
+                                <label for="filter-ha-disabled">HA enabled state</label>
                                 <select id="filter-ha-disabled" class="filter-select">
                                     <option value="">All states</option>
                                     <option value="any-disabled">Any linked HA device disabled</option>
@@ -446,6 +457,7 @@
     </div>
 
     <script src="js/metadata.js"></script>
+    <script src="js/ha-availability.js"></script>
     <script src="js/common.js"></script>
     <script src="js/data-consistency.js"></script>
     <script src="js/device-filters.js"></script>
