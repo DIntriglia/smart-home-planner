@@ -1,6 +1,7 @@
 ## 1.10.0 - 2026-09-18
 
 ### Fixed
+- Include event entities in availability diagnostics so Matter remotes and event-only devices with valid HA states no longer appear Unknown. Old event timestamps do not imply stale device data.
 - Hide empty dashboard diagnostic sections and their review/bulk-edit links.
 - Fully disabled HA devices now show “Not monitored” instead of “Unknown · 0/0 available” and are excluded from the availability-unknown dashboard list. Empty entity counts are no longer displayed.
 

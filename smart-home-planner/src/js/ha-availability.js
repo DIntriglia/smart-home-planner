@@ -4,7 +4,7 @@
     function buildSnapshot(registry, states, now = Date.now()) {
         const byId = new Map(states.map(entity => [entity.entity_id, entity]));
         const entities = registry.filter(entity => entity.device_id && !entity.disabled_by &&
-            !["button", "input_button", "scene", "event"].includes(String(entity.entity_id).split(".")[0]))
+            !["button", "input_button", "scene"].includes(String(entity.entity_id).split(".")[0]))
             .map(entity => {
                 const current = byId.get(entity.entity_id);
                 const value = current?.state;

@@ -67,3 +67,40 @@ test("partially disabled records still monitor enabled entities; re-enabling res
     assert.equal(summarize({...device,haDisabledState:"enabled"},snapshot(["on"]),0,now).state,"available");
     assert.equal(summarize({...device,haDisabledState:"mixed"},snapshot([]),0,now).state,"unknown");
 });
+
+
+test("event-only Matter devices use current HA state rather than last event age", () => {
+    const registry = [
+        {device_id:"one",entity_id:"event.button_one"},
+        {device_id:"one",entity_id:"event.button_two"},
+        {device_id:"one",entity_id:"event.disabled",disabled_by:"user"},
+        {device_id:"one",entity_id:"button.identify"}
+    ];
+    const oldTimestamp = new Date(now - 4 * 86400000).toISOString();
+    const data = buildSnapshot(registry, registry.map(entity => ({
+        entity_id:entity.entity_id, state:oldTimestamp, last_changed:oldTimestamp
+    })), now);
+    const info = summarize(device, data, 120, now);
+    assert.equal(info.state, "available");
+    assert.equal(info.available, 2);
+    assert.equal(info.total, 2);
+    assert.equal(JSON.stringify(data).includes(oldTimestamp), false);
+    assert.equal(summarize(device, data, 120, now + 121000).state, "unknown");
+});
+
+test("event entities preserve unavailable, unknown and missing states", () => {
+    const registry = [{device_id:"one",entity_id:"event.button"}];
+    for (const state of ["unavailable", "unknown", undefined]) {
+        const states = state === undefined ? [] : [{entity_id:"event.button",state,
+            last_changed:new Date(now - 180000).toISOString()}];
+        const info = summarize(device, buildSnapshot(registry, states, now), 120, now);
+        assert.equal(info.state, state === "unavailable" ? "unavailable" : "unknown");
+        assert.equal(info.total, 1);
+        assert.equal(info.actionable, state === "unavailable");
+    }
+    const mixed = buildSnapshot([...registry, {device_id:"one",entity_id:"sensor.temperature"}], [
+        {entity_id:"event.button",state:new Date(now - 86400000).toISOString()},
+        {entity_id:"sensor.temperature",state:"unavailable",last_changed:new Date(now - 180000).toISOString()}
+    ], now);
+    assert.equal(summarize(device, mixed, 120, now).state, "partial");
+});
