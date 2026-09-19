@@ -28,6 +28,58 @@ let selectedWifiClientIds = new Set();
 let selectedZigbeeChildIds = new Set();
 let selectedZwaveChildIds = new Set();
 let selectedBluetoothChildIds = new Set();
+let deviceFormBaseline = null;
+let deviceSaveInProgress = false;
+let deviceLeaveConfirmed = false;
+let deviceLeaveDialogOpen = false;
+
+function snapshotDeviceForm() {
+    const controls = [...document.querySelectorAll("#device-form input, #device-form select, #device-form textarea")]
+        .filter(control => !["file", "button", "submit"].includes(control.type))
+        .map(control => [control.id, control.name, control.type === "checkbox" || control.type === "radio"
+            ? control.checked : control.multiple ? [...control.selectedOptions].map(option => option.value) : control.value,
+            control.dataset.deviceId || ""]);
+    return JSON.stringify([controls, ...[selectedIspGatewayIds, selectedWifiClientIds, selectedZigbeeChildIds,
+        selectedZwaveChildIds, selectedBluetoothChildIds].map(ids => [...ids].sort()),
+        pendingDeviceImageFile ? [pendingDeviceImageFile.name, pendingDeviceImageFile.size, pendingDeviceImageFile.lastModified] : null]);
+}
+function hasUnsavedDeviceChanges() {
+    return !deviceLeaveConfirmed && deviceFormBaseline !== null && snapshotDeviceForm() !== deviceFormBaseline;
+}
+function markDeviceFormSaved() {
+    deviceFormBaseline = snapshotDeviceForm();
+}
+function initializeDeviceLeaveGuard() {
+    markDeviceFormSaved();
+    window.addEventListener("beforeunload", event => {
+        if (!hasUnsavedDeviceChanges() && !deviceSaveInProgress) return;
+        event.preventDefault();
+        event.returnValue = "";
+    });
+    document.addEventListener("click", async event => {
+        const link = event.target.closest("a[href]");
+        if (!link || event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey
+            || link.hasAttribute("download") || (link.target && link.target !== "_self")) return;
+        const destination = new URL(link.href, location.href);
+        if (destination.origin === location.origin && destination.pathname === location.pathname
+            && destination.search === location.search && destination.hash) return;
+        if (!hasUnsavedDeviceChanges() && !deviceSaveInProgress) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (deviceSaveInProgress || deviceLeaveDialogOpen) return;
+        deviceLeaveDialogOpen = true;
+        try {
+            const leave = await showConfirm("You have unsaved changes. Leave this page and discard them?", {
+                title: "Unsaved changes", confirmText: "Discard and leave", cancelText: "Keep editing"
+            });
+            if (leave) {
+                deviceLeaveConfirmed = true;
+                window.location.assign(destination.href);
+            }
+        } finally { deviceLeaveDialogOpen = false; }
+    }, true);
+}
+
 const amazonBatteryMetaMap = buildAmazonBatteryMetaMap();
 
 const AMAZON_STORE_DOMAINS = {
@@ -349,6 +401,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     handlePowerTypeChange();
+    initializeDeviceLeaveGuard();
 });
 
 // === Inline data warnings ===
@@ -2673,6 +2726,7 @@ function loadDeviceData(device) {
 // Form Handlers
 async function handleDeviceSubmit(e) {
     e.preventDefault();
+    if (deviceSaveInProgress) return;
     const form = e.currentTarget;
     const shouldStayOnPage = form?.dataset?.submitMode === 'apply';
     if (form && form.dataset) {
@@ -2946,10 +3000,21 @@ async function handleDeviceSubmit(e) {
         return;
     }
 
-    if (editingDeviceId) {
-        await updateDevice(editingDeviceId, deviceData, { stayOnPage: shouldStayOnPage });
-    } else {
-        await createDevice(deviceData);
+    deviceSaveInProgress = true;
+    form.inert = true;
+    form.setAttribute("aria-busy", "true");
+    try {
+        if (editingDeviceId) {
+            await updateDevice(editingDeviceId, deviceData, { stayOnPage: shouldStayOnPage });
+        } else {
+            await createDevice(deviceData);
+        }
+    } catch (error) {
+        await showAlert(`Unable to save device: ${error?.message || error}`, { title: "Save failed" });
+    } finally {
+        deviceSaveInProgress = false;
+        form.inert = false;
+        form.removeAttribute("aria-busy");
     }
 }
 
@@ -5852,6 +5917,8 @@ async function createDevice(deviceData) {
     await syncBluetoothChildrenForProxy(device.id, deviceData.bluetoothLinkedDeviceIds || []);
     await syncIspGatewaysForDevice(device.id, deviceData.ispGatewayIds || []);
 
+    markDeviceFormSaved();
+    deviceSaveInProgress = false;
     window.location.href = 'devices.html';
 }
 
@@ -5996,6 +6063,8 @@ async function updateDevice(id, deviceData, options = {}) {
         }
         devices = allDevices;
         
+        markDeviceFormSaved();
+        deviceSaveInProgress = false;
         if (options.stayOnPage) {
             showFormMessage('Device saved successfully.', 'success');
             return;
@@ -6045,5 +6114,7 @@ async function handleDeleteDevice() {
         isps: clearDeviceFromIspGateways(data.isps, editingDeviceId)
     }, { allowEmpty: true });
 
+    markDeviceFormSaved();
+    deviceSaveInProgress = false;
     window.location.href = 'devices.html';
 }

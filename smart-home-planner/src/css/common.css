@@ -4058,3 +4058,26 @@ select.is-open {
 
 .device-ha-details summary { cursor: pointer; }
 .device-ha-details p { margin-top: 0.75rem; overflow-wrap: anywhere; }
+
+/* Keep device actions available without covering the final form fields. */
+body:has(#device-form) { padding-bottom: calc(6rem + env(safe-area-inset-bottom)); }
+#device-form .form-actions {
+    position: fixed;
+    left: var(--rail-width);
+    right: 0;
+    bottom: 0;
+    z-index: 89;
+    margin: 0;
+    padding: 0.75rem 1.5rem calc(0.75rem + env(safe-area-inset-bottom));
+    background: var(--card-bg);
+    border-top: 1px solid var(--border-color);
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+}
+#device-form .form-actions .btn { width: auto; min-width: 0; flex: 0 0 auto; }
+#device-form .form-actions #delete-device-btn { margin-right: auto; }
+@media (max-width: 768px) {
+    #device-form .form-actions { left: 0; padding-left: 0.75rem; padding-right: 0.75rem; }
+    #device-form .form-actions .btn { padding-left: 0.75rem; padding-right: 0.75rem; }
+}

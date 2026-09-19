@@ -1,6 +1,7 @@
 ## 1.10.0 - 2026-09-18
 
 ### Changed
+- Keep device form actions visible in a fixed bottom bar on desktop and mobile, and confirm navigation away from unsaved changes. Successful saves clear the warning; failed saves retain it.
 - Dashboard diagnostics identify integrations and unknown entities, distinguish all-entity outages from partial issues, show outage duration, and link explicitly to all results when previews are truncated.
 
 ### Fixed
