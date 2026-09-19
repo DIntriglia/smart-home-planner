@@ -2758,8 +2758,10 @@ function getDeviceAvailability(device) {
 function getDeviceAvailabilityLabel(device) {
     if (!hasHomeAssistantSource(device)) return "";
     const info = getDeviceAvailability(device);
+    if (info.state === "not-monitored") return "HA availability: Not monitored — disabled in Home Assistant";
     const label = { available: "Available", partial: "Partially unavailable", unavailable: "Unavailable", unknown: "Unknown" }[info.state];
-    return `HA availability: ${label} · ${info.available}/${info.total} available`;
+    return info.total ? `HA availability: ${label} · ${info.available}/${info.total} available`
+        : `HA availability: ${label} — no current entity data`;
 }
 function matchesHaAvailability(device, value) {
     if (!value) return true;

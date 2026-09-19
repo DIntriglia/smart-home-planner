@@ -48,3 +48,22 @@ test("missing, malformed, future and empty observations remain unknown", () => {
     const missing = buildSnapshot([{device_id:"one",entity_id:"sensor.missing"}],[],now);
     assert.equal(summarize(device,missing,0,now).unknown,1);
 });
+
+
+test("fully disabled devices are not monitored, even with stale or unavailable entities", () => {
+    const disabled = { ...device, haDisabledState: "disabled", status: "working" };
+    for (const data of [null, snapshot([]), snapshot(["unavailable"]), { ...snapshot(["unavailable"]), checkedAt: 1 }]) {
+        const info = summarize(disabled, data, 0, now);
+        assert.equal(info.state, "not-monitored");
+        assert.equal(info.actionable, false);
+        assert.equal(info.affected.length, 0);
+    }
+    assert.equal(disabled.status, "working");
+    assert.equal(summarize({ ...disabled, homeAssistant: false }, null, 0, now).state, "unknown");
+});
+
+test("partially disabled records still monitor enabled entities; re-enabling resumes monitoring", () => {
+    assert.equal(summarize({...device,haDisabledState:"mixed"},snapshot(["unavailable"]),0,now).actionable,true);
+    assert.equal(summarize({...device,haDisabledState:"enabled"},snapshot(["on"]),0,now).state,"available");
+    assert.equal(summarize({...device,haDisabledState:"mixed"},snapshot([]),0,now).state,"unknown");
+});

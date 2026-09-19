@@ -24,6 +24,9 @@
     function summarize(device, snapshot, graceSeconds = 120, now = Date.now()) {
         const empty = { state: "unknown", total: 0, available: 0, unavailable: 0, unknown: 0, affected: [], actionable: false };
         const linked = device?.homeAssistant === true || ["true", "1", "yes"].includes(String(device?.homeAssistant).toLowerCase());
+        if (linked && device.haDisabledState === "disabled") {
+            return { ...empty, state: "not-monitored" };
+        }
         if (!linked || !snapshot?.connected || !Number.isFinite(snapshot.checkedAt) ||
             now - snapshot.checkedAt > STALE_MS || snapshot.checkedAt > now + 5000) return empty;
         const ids = new Set(Array.isArray(device.haDeviceIds) && device.haDeviceIds.length ? device.haDeviceIds

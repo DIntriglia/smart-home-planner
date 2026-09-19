@@ -354,3 +354,5 @@ Choose **Decommissioned** when intentionally retiring equipment. Optional retire
 Device forms show source information at the top, before Basic Information. HA-disabled devices have an amber warning matching the existing form warnings. Availability details remain collapsed until expanded; manually entered devices do not show HA-only details.
 
 In the Devices table and cards, an amber pause icon beside the name identifies devices disabled in Home Assistant (including partially disabled linked records). Hover for an explanation; the icon also has a screen-reader label. This indicator is independent of the planner status.
+
+Fully disabled HA devices show **Not monitored — disabled in Home Assistant** instead of Unknown, even when no live entity data exists. They remain in the disabled-device dashboard list and are omitted from availability-unknown and outage lists. The availability filter includes Not monitored. Partially disabled records continue to use their eligible enabled entities; records without current entity data no longer display a misleading 0/0 count. Planner status remains independent.

@@ -1,5 +1,8 @@
 ## 1.10.0 - 2026-09-18
 
+### Fixed
+- Fully disabled HA devices now show “Not monitored” instead of “Unknown · 0/0 available” and are excluded from the availability-unknown dashboard list. Empty entity counts are no longer displayed.
+
 ### Added
 - Amber disabled-state icons beside device names in table and card views, with accessible explanations for fully or partially disabled HA devices.
 - Prominent disabled-device warning at the top of device forms, with compact source information and expandable availability details.
