@@ -139,3 +139,27 @@ test("partial metadata retains prior domains without mutating retained records",
     assert.deepEqual(result.nextStorage.devices[0].haIntegrationDomains, ["mqtt", "zha"]);
     assert.deepEqual(record.haIntegrationDomains, ["zha"]);
 });
+
+
+test("HA disabled state updates without changing planner status", () => {
+    const record = { id: "one", homeAssistant: true, status: "not-working", customFields: { code: "0012" } };
+    const disabled = sync(storage([], [record]), [ha("one", ["a"], { disabled_by: "user" })]).nextStorage;
+    assert.equal(disabled.devices[0].haDisabledState, "disabled");
+    assert.equal(disabled.devices[0].status, "not-working");
+    const enabled = sync(disabled, [ha("one", ["a"], { disabled_by: null })]).nextStorage;
+    assert.equal(enabled.devices[0].haDisabledState, "enabled");
+    assert.equal(enabled.devices[0].status, "not-working");
+    assert.equal(record.haDisabledState, undefined);
+    assert.equal(sync(enabled, []).nextStorage.devices[0].haDisabledState, "unknown");
+});
+
+test("multiple linked devices distinguish all, some and unknown disabled state", () => {
+    const record = { id: "local", homeAssistant: true, haDeviceIds: ["one", "two"] };
+    const state = (registry) => sync(storage([], [record]), registry).nextStorage.devices[0].haDisabledState;
+    const disabled = ha("one", ["a"], { disabled_by: "integration" });
+    assert.equal(state([disabled, ha("two", ["b"], { disabled_by: "user" })]), "disabled");
+    assert.equal(state([disabled, ha("two", ["b"], { disabled_by: null })]), "mixed");
+    assert.equal(state([disabled]), "mixed");
+    assert.equal(state([ha("one", ["a"], { disabled_by: null })]), "unknown");
+    assert.equal(state([ha("one"), ha("two")]), "unknown");
+});

@@ -19,7 +19,7 @@ async function workerFixture() {
                 if (state.failEntries) throw new Error("unavailable");
                 return [{ entry_id: "mqtt-entry", domain: "mqtt", data: { secret: "not-persisted" } }];
             }
-            if (type === "config/device_registry/list") return [{ id: "one", config_entries: ["mqtt-entry"], name: "One" }];
+            if (type === "config/device_registry/list") return [{ id: "one", config_entries: ["mqtt-entry"], name: "One", disabled_by: "user" }];
             return [];
         },
         async subscribeMessage(callback, message) { state.subscription = { callback, message }; },
@@ -56,6 +56,7 @@ async function workerFixture() {
 
 test("startup, reconnect and config-entry subscription refresh sanitized membership", async () => {
     const { worker, state, files } = await workerFixture();
+    state.storage.devices = [{ id: "one", homeAssistant: true, status: "working" }];
     await worker.connectAndRun();
     assert.equal(state.subscription.message.type, "config_entries/subscribe");
     assert.deepEqual(JSON.parse(files.get("/data/integrations.json")), [{ entry_id: "mqtt-entry", domain: "mqtt" }]);
@@ -63,6 +64,8 @@ test("startup, reconnect and config-entry subscription refresh sanitized members
     assert.deepEqual(cached.config_entries, ["mqtt-entry"]);
     assert.deepEqual(cached.integrationDomains, ["mqtt"]);
     assert.equal(cached.integrationMembershipResolved, true);
+    assert.equal(cached.disabled_by, "user");
+    assert.equal(state.storage.devices[0].haDisabledState, "disabled");
     const before = state.requests.filter(type => type === "config_entries/get").length;
     state.ready(); await worker.drain();
     state.subscription.callback(); await worker.drain();

@@ -2715,3 +2715,21 @@ function matchesDeviceSource(device, value) {
     if (value === "homeAssistant") return hasHomeAssistantSource(device);
     return value.startsWith("ha:") && getDeviceHaDomains(device).includes(value.slice(3));
 }
+
+function getDeviceHaDisabledLabel(device) {
+    if (!hasHomeAssistantSource(device)) return "";
+    if (!normalizeHaIntegrationFlag(device.homeAssistant)) return "HA state unknown (not linked)";
+    const labels = {
+        disabled: "Disabled in Home Assistant",
+        mixed: "Some linked devices disabled in Home Assistant",
+        enabled: "Enabled in Home Assistant"
+    };
+    return labels[device.haDisabledState] || "HA enabled/disabled state unknown";
+}
+
+function matchesHaDisabledState(device, value) {
+    if (!value) return true;
+    if (!normalizeHaIntegrationFlag(device?.homeAssistant)) return false;
+    const state = device.haDisabledState || "unknown";
+    return value === "any-disabled" ? ["disabled", "mixed"].includes(state) : state === value;
+}

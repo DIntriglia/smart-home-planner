@@ -2515,7 +2515,8 @@ async function loadDuplicateDeviceFromStorage() {
 function loadDeviceData(device) {
     renderDeviceCustomFields(settings, device.customFields);
     const sourceDescription = document.getElementById("device-source-description");
-    if (sourceDescription) sourceDescription.textContent = editingDeviceId ? getDeviceSourceLabel(device) : "Manual";
+    if (sourceDescription) sourceDescription.textContent = editingDeviceId
+        ? [getDeviceSourceLabel(device), getDeviceHaDisabledLabel(device)].filter(Boolean).join(" · ") : "Manual";
     if (device && device.id) {
         activeDeviceId = String(device.id);
     }

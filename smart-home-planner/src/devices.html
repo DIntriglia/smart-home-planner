@@ -240,6 +240,17 @@
                         <div class="filters-block">
                             <div class="filters-block-title">Integrations</div>
                             <div class="filter-field">
+                                <label for="filter-ha-disabled">Home Assistant device state</label>
+                                <select id="filter-ha-disabled" class="filter-select">
+                                    <option value="">All states</option>
+                                    <option value="any-disabled">Any linked HA device disabled</option>
+                                    <option value="disabled">All linked HA devices disabled</option>
+                                    <option value="mixed">Some linked HA devices disabled</option>
+                                    <option value="enabled">All linked HA devices enabled</option>
+                                    <option value="unknown">Unknown</option>
+                                </select>
+                            </div>
+                            <div class="filter-field">
                                 <label for="filter-device-source">Device source / HA integration</label>
                                 <select id="filter-device-source" class="filter-select"><option value="">All sources</option></select>
                             </div>
@@ -288,6 +299,8 @@
                     </div>
                     <div class="bulk-edit-meta">
                         <span id="bulk-edit-count">0 selected</span>
+                        <button type="button" class="btn btn-secondary" id="bulk-select-filtered">Select all filtered</button>
+                        <button type="button" class="btn btn-secondary" id="bulk-clear-selection">Clear selection</button>
                     </div>
                 </div>
                 <div class="bulk-edit-body">

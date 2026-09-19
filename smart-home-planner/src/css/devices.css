@@ -799,3 +799,10 @@
     white-space: normal;
     overflow-wrap: anywhere;
 }
+
+.device-ha-state {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}

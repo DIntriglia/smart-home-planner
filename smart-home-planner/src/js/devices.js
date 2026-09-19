@@ -153,6 +153,19 @@ function initializeEventListeners() {
         });
     }
 
+    document.getElementById("bulk-select-filtered")?.addEventListener("click", () => {
+        if (!bulkEditVisible) return;
+        selectedDeviceIds.clear();
+        filteredDevices.forEach(device => selectedDeviceIds.add(device.id));
+        renderDevices();
+        updateBulkEditState();
+    });
+    document.getElementById("bulk-clear-selection")?.addEventListener("click", () => {
+        selectedDeviceIds.clear();
+        renderDevices();
+        updateBulkEditState();
+    });
+
     const tableBody = document.getElementById('devices-table-body');
     if (tableBody) {
         tableBody.addEventListener('change', (event) => {
@@ -875,7 +888,7 @@ function renderDevices() {
                             </div>
                         </div>
                     </td>
-                    <td class="device-source-cell">${escapeHtml(getDeviceSourceLabel(device))}</td>
+                    <td class="device-source-cell">${escapeHtml(getDeviceSourceLabel(device))}<div class="device-ha-state">${escapeHtml(getDeviceHaDisabledLabel(device))}</div></td>
                     <td class="col-area-installed">${escapeHtml(areaName)}</td>
                     <td class="col-area-controlled">${escapeHtml(controlledAreaName)}</td>
                     <td>${escapeHtml(brandDisplay)}</td>
@@ -962,7 +975,7 @@ function renderDevicesGrid(devicesToRender) {
                 <div class="device-card-meta">
                     <div class="device-card-meta-row">
                         <span class="device-card-meta-label">Source</span>
-                        <span class="device-card-meta-value">${escapeHtml(getDeviceSourceLabel(device))}</span>
+                        <span class="device-card-meta-value">${escapeHtml(getDeviceSourceLabel(device))}<span class="device-ha-state">${escapeHtml(getDeviceHaDisabledLabel(device))}</span></span>
                     </div>
                     <div class="device-card-meta-row">
                         <span class="device-card-meta-label">Installed Area</span>

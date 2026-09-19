@@ -550,6 +550,14 @@ function buildStorageDevicesUpdate(storage, haDevices, allowedLabels) {
   for (let index = 0; index < nextDevices.length; index += 1) {
     const device = nextDevices[index] = { ...nextDevices[index] };
     const linked = getLinkedHaDeviceIds(device).map(id => registryById.get(id));
+    // A registry device's disabled_by is independent of planner status.
+    // Missing entries/fields are unknown, never inferred as enabled.
+    const known = linked.filter(item => item && Object.hasOwn(item, "disabled_by"));
+    const disabledCount = known.filter(item => Boolean(item.disabled_by)).length;
+    device.haDisabledState = !linked.length ? "unknown"
+      : disabledCount === linked.length ? "disabled"
+      : disabledCount > 0 ? "mixed"
+      : known.length === linked.length ? "enabled" : "unknown";
     const domains = normalizeDomains(linked.flatMap(item => item?.integrationDomains || []));
     if (linked.length && linked.every(item => item?.integrationMembershipResolved)) {
       device.haIntegrationDomains = domains;

@@ -61,3 +61,15 @@ test("source filtering works without HA and includes all domains of shared devic
     assert.match(context.getDeviceSourceLabel({ homeAssistant: true }), /integration unknown/);
     assert.match(context.getDeviceSourceLabel({ source: "homeAssistant", haIntegrationDomains: ["mqtt"] }), /not linked/);
 });
+
+
+test("disabled filters exclude manual devices and handle partial or unavailable state", async () => {
+    const common = await readFile(new URL("../src/js/common.js", import.meta.url), "utf8");
+    const context = vm.createContext({ normalizeHaIntegrationFlag: value => value === true });
+    vm.runInContext(common.slice(common.indexOf("function getDeviceHaDomains(")), context);
+    assert.equal(context.matchesHaDisabledState({}, "any-disabled"), false);
+    assert.equal(context.matchesHaDisabledState({ homeAssistant: true, haDisabledState: "mixed" }, "any-disabled"), true);
+    assert.equal(context.matchesHaDisabledState({ homeAssistant: true, haDisabledState: "mixed" }, "disabled"), false);
+    assert.equal(context.matchesHaDisabledState({ homeAssistant: true }, "unknown"), true);
+    assert.equal(context.matchesHaDisabledState({ homeAssistant: false, haDisabledState: "disabled" }, "any-disabled"), false);
+});

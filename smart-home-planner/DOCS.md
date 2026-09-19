@@ -326,3 +326,12 @@ Domains are refreshed during Home Assistant registry sync and stored with invent
 Define custom text fields under **Settings → Device Options → Custom Text Fields**, then enter values in **Custom Fields** on the add/edit device page. For example, create “Matter Setup Code” and enter the code as text, including leading zeros or hyphens. Fields use stable IDs: renaming a field keeps all values. Archiving hides empty inputs and keeps populated values visible as read-only; **Restore field** makes the field editable again. Fields and values are included in normal app backups and survive Home Assistant sync. Integration exclusion still deletes the whole inventory record, including its custom field values; re-import does not recover them.
 
 Custom text fields use the app’s normal storage and access controls; they are not a separate encrypted secret vault.
+
+
+### Home Assistant disabled devices
+
+The source column, device cards, and edit page show whether linked Home Assistant devices are enabled or disabled. For records linked to several HA devices, “Some linked devices disabled” means at least one is disabled but the remaining devices are enabled or unresolved. Missing registry data is shown as unknown. This is the device registry's disabled state, not entity availability or an individual entity's disabled state.
+
+To mark disabled devices **Not Working**, open **Devices → Filters → Integrations → Home Assistant device state → Any linked HA device disabled**. Enable **Bulk Edit**, click **Select all filtered** to select matches across every page (or select individual devices; the table header selects the current page), choose **Field → Status → Not Working**, then apply. For multi-device records where every linked device must be disabled, use **All linked HA devices disabled** instead. The planner status stays under your control: sync updates the HA state without overwriting your chosen status or enabling/disabling anything in Home Assistant.
+
+Existing import rules still skip newly discovered HA devices disabled by the user or their config entry. The disabled-state filter applies to devices already in your planner inventory.
