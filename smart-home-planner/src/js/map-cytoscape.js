@@ -5403,6 +5403,7 @@ function formatStorageLabel(device) {
 function getDeviceStatusColor(status) {
     const normalized = String(status || '').trim().toLowerCase();
     if (normalized === 'pending') return '#f5a524';
+    if (normalized === 'decommissioned') return '#808080';
     if (normalized === 'not-working') return '#f0383b';
     if (normalized === 'working') return '#38cc65';
     return '#006fff';

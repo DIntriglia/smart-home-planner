@@ -81,6 +81,7 @@ const _STATUS_LABELS = {
     'working':     'Working',
     'pending':     'Pending',
     'not-working': 'Not Working',
+    'decommissioned': 'Decommissioned',
     'wishlist':    'Wishlist',
 };
 
@@ -920,6 +921,7 @@ async function _pdfDiagramPage(doc, data) {
 const _DIAGRAM_STATUS_COLOR = {
     'working':     [16, 185, 129],   // #38cc65 emerald-500
     'pending':     [245, 158,  11],  // #f5a524 amber-500
+    'decommissioned': [128, 128, 128],
     'not-working': [239,  68,  68],  // #f0383b red-500
 };
 
@@ -2636,7 +2638,7 @@ function _mdSummarySection(lines, data, config) {
 
     // By Status
     const byStatus = _groupBy(devices, (d) => d.status || 'unknown');
-    const statusEntries = ['working', 'pending', 'not-working', 'wishlist']
+    const statusEntries = ['working', 'pending', 'not-working', 'wishlist', 'decommissioned']
         .filter((s) => byStatus[s])
         .map((s) => [_STATUS_LABELS[s] || s, byStatus[s].length]);
     _mdDistTable(lines, 'By Status', 'Status', statusEntries, total);

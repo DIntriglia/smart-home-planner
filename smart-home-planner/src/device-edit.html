@@ -214,6 +214,7 @@
                                     <option value="working">Working</option>
                                     <option value="pending">Pending</option>
                                     <option value="not-working">Not Working</option>
+                                    <option value="decommissioned">Decommissioned</option>
                                     <option value="wishlist">Wishlist</option>
                                 </select>
                             </div>
@@ -708,6 +709,12 @@
                     <div class="form-section">
                         <h3 class="form-section-title">Custom Fields</h3>
                         <div id="device-custom-fields" class="form-grid"></div>
+                    </div>
+                    <div class="form-section">
+                        <h3 class="form-section-title">Retirement</h3>
+                        <p>Optional details for decommissioned equipment. Changing planner status does not disable or delete anything in Home Assistant.</p>
+                        <div class="form-group"><label for="device-retired-date">Retirement date</label><input type="date" id="device-retired-date"></div>
+                        <div class="form-group"><label for="device-retired-reason">Retirement reason</label><input type="text" id="device-retired-reason"></div>
                     </div>
                     <!-- Notes & Links -->
                     <div class="form-section-row">

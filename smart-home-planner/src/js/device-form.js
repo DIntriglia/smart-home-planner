@@ -2513,6 +2513,8 @@ async function loadDuplicateDeviceFromStorage() {
 }
 
 function loadDeviceData(device) {
+    document.getElementById("device-retired-date").value = device.retiredDate || "";
+    document.getElementById("device-retired-reason").value = device.retiredReason || "";
     renderDeviceCustomFields(settings, device.customFields);
     const sourceDescription = document.getElementById("device-source-description");
     if (sourceDescription) sourceDescription.textContent = editingDeviceId
@@ -2899,6 +2901,8 @@ async function handleDeviceSubmit(e) {
         storages: storagesResult.storages,
         notes: document.getElementById('device-notes').value,
         customFields: readDeviceCustomFields(),
+        retiredDate: document.getElementById("device-retired-date").value,
+        retiredReason: document.getElementById("device-retired-reason").value,
         links: linksResult.links,
         connectivity: connectivity,
         networkId: networkValue,
@@ -5790,6 +5794,8 @@ async function createDevice(deviceData) {
         storageUnit: normalizedStorages[0]?.unit || '',
         notes: deviceData.notes ? deviceData.notes.trim() : '',
         customFields: deviceData.customFields,
+        retiredDate: deviceData.retiredDate,
+        retiredReason: deviceData.retiredReason,
         links: normalizeDeviceLinks(deviceData.links),
         connectivity: normalizeOptionValue(deviceData.connectivity),
         networkId: deviceData.networkId || '',
@@ -5898,6 +5904,8 @@ async function updateDevice(id, deviceData, options = {}) {
         device.storageSize = normalizedStorages[0]?.size ?? null;
         device.storageUnit = normalizedStorages[0]?.unit || '';
         device.notes = deviceData.notes ? deviceData.notes.trim() : '';
+        device.retiredDate = deviceData.retiredDate;
+        device.retiredReason = deviceData.retiredReason;
         device.customFields = { ...device.customFields, ...deviceData.customFields };
         device.links = normalizeDeviceLinks(deviceData.links);
         device.connectivity = normalizeOptionValue(deviceData.connectivity);

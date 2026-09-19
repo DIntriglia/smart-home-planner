@@ -1054,7 +1054,9 @@
             latestBackupStatus = haBackupsStatus;
             haCountry = String(haConfig?.country || '').trim().toUpperCase();
             const dashboard = document.getElementById('dashboard');
-            const devices = data.devices || [];
+            const inventory = data.devices || [];
+            const retiredCount = inventory.filter(device => device.status === "decommissioned").length;
+            const devices = inventory.filter(device => device.status !== "decommissioned");
             const testCases = data.testCases || [];
             const testCaseRuns = data.testCaseRuns || [];
             const floors = data.floors || [];
@@ -1068,7 +1070,7 @@
             const pendingDevices = devices.filter(d => d.status === 'pending').length;
             const notWorkingDevices = devices.filter(d => d.status === 'not-working').length;
 
-            const hasOverviewData = devicesCount > 0 || areasCount > 0 || floorsCount > 0;
+            const hasOverviewData = devicesCount > 0 || retiredCount > 0 || areasCount > 0 || floorsCount > 0;
             dashboard.innerHTML = hasOverviewData ? `
                 <div class="dashboard-card">
                     <div class="overview-head">
@@ -1092,6 +1094,7 @@
                         <span class="overview-chip working">${workingDevices} working</span>
                         <span class="overview-chip pending">${pendingDevices} pending</span>
                         <span class="overview-chip not-working">${notWorkingDevices} not working</span>
+                        <a class="overview-chip" href="devices.html?status=decommissioned">${retiredCount} decommissioned</a>
                     </div>
                 </div>
             ` : '';

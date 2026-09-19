@@ -1,6 +1,7 @@
 ## 1.10.0 - 2026-09-18
 
 ### Added
+- Decommissioned planner status, optional retirement date/reason, bulk editing, filtering, and a separate dashboard count. Retired devices are omitted from active dashboard statistics.
 - Home Assistant enabled/disabled state in device views and filters, including partially disabled linked devices. Filter disabled devices and use Bulk Edit → Status to set Not Working without changing Home Assistant.
 - Device source and Home Assistant integration domains in the device table, cards, and edit view, with a source/integration filter.
 - Reusable custom text fields under Settings → Device Options, with per-device values and non-destructive renaming and archiving.

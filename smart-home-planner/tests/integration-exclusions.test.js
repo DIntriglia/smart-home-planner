@@ -163,3 +163,14 @@ test("multiple linked devices distinguish all, some and unknown disabled state",
     assert.equal(state([ha("one", ["a"], { disabled_by: null })]), "unknown");
     assert.equal(state([ha("one"), ha("two")]), "unknown");
 });
+
+
+test("retired inventory and retirement details survive HA removal and rediscovery", () => {
+    const record = { id: "one", homeAssistant: true, status: "decommissioned", retiredDate: "2026-09-18", retiredReason: "Replaced", notes: "History", files: [{path:"one/manual.pdf"}] };
+    const removed = sync(storage([], [record]), []).nextStorage;
+    assert.equal(removed.devices[0].status, "decommissioned");
+    const restored = sync(removed, [ha("one")]).nextStorage.devices[0];
+    assert.equal(restored.status, "decommissioned");
+    assert.equal(restored.retiredReason, "Replaced");
+    assert.deepEqual(restored.files, record.files);
+});

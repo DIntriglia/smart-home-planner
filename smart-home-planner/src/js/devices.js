@@ -1044,7 +1044,7 @@ function normalizeStatusValue(status) {
         .toLowerCase()
         .replace(/\s+/g, '-');
 
-    if (['working', 'pending', 'wishlist', 'not-working'].includes(normalized)) {
+    if (['working', 'pending', 'wishlist', 'not-working', 'decommissioned'].includes(normalized)) {
         return normalized;
     }
 

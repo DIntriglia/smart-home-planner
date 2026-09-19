@@ -4028,3 +4028,5 @@ select.is-open {
     flex: 1 1 220px;
     min-width: 0;
 }
+
+.status-decommissioned { color: #aaa; background: rgba(128, 128, 128, 0.15); }
