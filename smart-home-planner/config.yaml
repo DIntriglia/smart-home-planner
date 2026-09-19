@@ -3,7 +3,7 @@ name: "Smart Home Planner"
 description: "Plan, document, and visualize your smart home ecosystem"
 version: "1.9.0"
 slug: "smart-home-planner"
-url: "https://github.com/smarthomecompared/smart-home-planner"
+url: "https://github.com/DIntriglia/smart-home-planner"
 
 # Architecture support (the Supervisor will build for the correct one)
 arch:
